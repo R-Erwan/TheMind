@@ -7,34 +7,26 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <signal.h>
+#include "playersRessources.h"
 
 #define MAX_CLIENTS 2
 #define SERVER_FULL_MSG "Le serveur est plein. Veuillez réessayer plus tard.\n"
 #define CMD_READY "ready"
 #define CMD_UNREADY "unready"
 
-int *p_listen_fd;  // Pointeur global vers listen_fd pour SIGINT
-
-/* Structure pour identifier un joueur*/
 typedef struct {
-    int socket_fd;
-    char name[50];
-    char ready;
-} Player;
+    Player *p;
+    PlayerList  *pl;
+} ClientThreadArgs;
 
-/* Structure pour gérer une liste de Joueur*/
-typedef struct {
-    Player players[MAX_CLIENTS];
-    int players_count;
-    int players_ready;
-} PlayerList;
+typedef struct{
+    int listen_fd;
+    PlayerList *pl;
+} ListentThreadArgs;
 
-/* Liste des joueurs*/
-PlayerList playerList;
-
-/* Verrous pour l'accès aux joueurs*/
-pthread_mutex_t client_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t ready_cond = PTHREAD_COND_INITIALIZER;
+volatile int keepalive = 1;
+pthread_cond_t keepalive_cond;
+pthread_mutex_t keepalive_mutex;
 
 /* Affiche un message d'érreur critique et ferme le programme */
 void fatal_error(const char* msg){
@@ -43,127 +35,53 @@ void fatal_error(const char* msg){
 }
 
 /**
- * Envoie un message a tous les joueurs du lobby
- * @param msg
- * @param exclude_fd
- */
-void broadcast_message(const char* msg, int exclude_fd){
-    pthread_mutex_lock(&client_mutex);
-    for (int i = 0; i < playerList.players_count; ++i) {
-        if(playerList.players[i].socket_fd != exclude_fd){
-            send(playerList.players[i].socket_fd, msg, strlen(msg),0);
-        }
-    }
-    pthread_mutex_unlock(&client_mutex);
-}
-
-/**
- * Message de connexion d'un nouveau joueur, broadcast + message console server
- * @param p Le nouveau joueur
- */
-void new_player_broadcast(Player *p){
-    char message[128];
-    snprintf(message,sizeof message,"%s a rejoint la partie ! Joueur connecté %d\n",p->name, playerList.players_count);
-    broadcast_message(message,p->socket_fd);
-    printf("%s", message);
-}
-
-/**
- * Message de dé-connexion d'un nouveau joueur, broadcast + message console server
- * @param p Le nouveau joueur
- */
-void player_leave_broadcast(Player *p){
-    char message[128];
-    snprintf(message, sizeof message, "%s a quitté! Joueurs connectés: %d\n", p->name, playerList.players_count);
-    broadcast_message(message, -1);
-    printf("%s",message);
-}
-
-/**
- * Envoie le nombre de joueur prêt a tout les joueurs.
- */
-void player_ready_broadcast(){
-    char message[128];
-    snprintf(message, sizeof message, "[%d/ %d] joueur prêt\n",playerList.players_ready,playerList.players_count);
-    broadcast_message(message, -1);
-    printf("%s",message);
-}
-
-/**
- * Modifie l'état pret ou non d'un joueur
- * @param player Le joueur a changer d'état
- * @param ready L'état a lui affecté
- */
-void handle_ready_cmd(Player *player, uint8_t ready){
-
-    if(player->ready == ready)
-        return;
-
-    pthread_mutex_lock(&client_mutex);
-    if (ready){
-        player->ready = 1;
-        playerList.players_ready++;
-    } else {
-        player->ready = 0;
-        playerList.players_ready--;
-    }
-    pthread_mutex_unlock(&client_mutex);
-    player_ready_broadcast();
-}
-
-/**
  * Fonction des threads joueurs
  * @param client_sock le socket client
  * @return
  */
-void *handle_client(void *client_sock) {
-    int client_fd = *(int*)client_sock;
+void *handle_client(void *arg) {
+    ClientThreadArgs *args = (ClientThreadArgs *)arg;
+    Player *p = args->p;
+    PlayerList *pl = args->pl;
+
+    char name[50];
     char message[256];
-    free(client_sock);
 
-    pthread_mutex_lock(&client_mutex); // --LOCK client_m--
-    Player *player = &playerList.players[playerList.players_count++]; // Créer un nouveau joueur
-    player->socket_fd = client_fd;
-    player->ready = 0;
+    snprintf(message,sizeof message,"Bienvenue sur TheMind ! \nEnvoyé votre nom \n");
+    send(p->socket_fd,message,sizeof message,0);
 
-    send(client_fd,"Entrez votre nom: ",18,0); //Demande au client de donner un nom, sera peut-être gérer par le programme client
-    recv(client_fd,player->name,sizeof(player->name)-1,0);
-    player->name[strcspn(player->name,"\n")] = '\0';
+    recv(p->socket_fd,name,sizeof (name) -1, 0);
+    if(!set_player_name(pl,p,name)){
+        //TODO Traiter le cas ou le nom du client ne vas pas.
+    }
 
-    snprintf(message, sizeof message, "Bienvenue %s sur TheMind!\nIl y a %d joueurs\nEnvoyé 'ready' si vous êtes prêt a commencé !\n", player->name, playerList.players_count);
-    send(client_fd,message,256,0);
-    pthread_mutex_unlock(&client_mutex); // --UNLOCK client_m
+    snprintf(message, sizeof message, "Bienvenue %s\nIl y a %d joueurs\nEnvoyé 'ready' si vous êtes prêt a commencé !\n", p->name, pl->count);
+    send(p->socket_fd,message,sizeof message,0);
 
-    new_player_broadcast(player); // Envoie un message pour annoncer une nouvelle connexion
+    new_player_broadcast(pl,p); // Envoie un message pour annoncer une nouvelle connexion
 
     char buffer[BUFSIZ];
     while(1){
-        ssize_t len = recv(client_fd,buffer,sizeof (buffer) -1, 0);
+        ssize_t len = recv(p->socket_fd,buffer,sizeof (buffer) -1, 0);
         if (len <= 0) break;
+
         buffer[len] = '\0';
-
         if(strncmp(buffer,CMD_READY, strlen(CMD_READY)) == 0){
-            handle_ready_cmd(player,1);
+            update_ready_player(pl,p,1);
+            ready_player_broadcast(pl);
         } else if (strncmp(buffer,CMD_UNREADY, strlen(CMD_UNREADY)) == 0){
-            handle_ready_cmd(player,0);
+            update_ready_player(pl,p,0);
+            ready_player_broadcast(pl);
         } else {
-            printf("Message from %s: %s\n",player->name,buffer);
+            printf("Message from %s: %s\n",p->name,buffer);
         }
     }
 
-    /* Déconnexion du joueur */
-    close(client_fd);
-    pthread_mutex_lock(&client_mutex);
-    for (int i = 0; i < playerList.players_count; ++i) {
-        if(playerList.players[i].socket_fd == client_fd){
-            playerList.players[i].socket_fd = playerList.players[--playerList.players_count].socket_fd;
-            break;
-        }
-    }
-    pthread_mutex_unlock(&client_mutex);
+    remove_player(pl,p);
+    leave_broadcast(pl,p);
 
-    player_leave_broadcast(player);
-
+    close(p->socket_fd);
+    free(args);
     return NULL;
 }
 
@@ -172,60 +90,56 @@ void *handle_client(void *client_sock) {
  * @param listen_fd Le socket d'écoute
  * @return NULL
  */
-void *handle_new_connection(int listen_fd){
-    struct sockaddr_in client_addr;
-    socklen_t client_len = sizeof(client_addr);
-    int* client_fd = malloc(sizeof (int));
-    *client_fd = accept(listen_fd,(struct sockaddr*)&client_addr,&client_len);
+void *handle_new_connection(void *argsT){
+    while(keepalive){
 
-    if(*client_fd == -1) {
-        free(client_fd);
-        perror("ERROR accepting connection\n");
-        return NULL;
-    }
+        ListentThreadArgs *argT = (ListentThreadArgs *)argsT;
+        PlayerList *pl = argT->pl;
+        int listen_fd = argT->listen_fd;
 
-    pthread_mutex_lock(&client_mutex); //--LOCK client_m--
-    if(playerList.players_count >= MAX_CLIENTS){
-        send(*client_fd,SERVER_FULL_MSG, strlen(SERVER_FULL_MSG),0);
-        close(*client_fd);
-        free(client_fd);
-        pthread_mutex_unlock(&client_mutex);
-        printf("Un client a tenté de se connecter mais le serveur est plein.\n");
-        return NULL;
-    }
-    pthread_mutex_unlock(&client_mutex);
+        struct sockaddr_in client_addr;
+        socklen_t client_len = sizeof(client_addr);
 
-    pthread_t thread_id;
-    if (pthread_create(&thread_id,NULL,handle_client,client_fd) != 0){
-        perror("ERROR creating thread\n");
-        free(client_fd);
-        return NULL;
+        ClientThreadArgs *args = malloc(sizeof(ClientThreadArgs));
+        if(args == NULL) {
+            free(args);
+            perror("ERROR allocation memory for thread args\n");
+            continue;
+        }
+
+        int client_fd = accept(listen_fd, (struct sockaddr*)&client_addr, &client_len);
+
+        printf("CC\n");
+
+        if (client_fd == -1) {
+            free(args);
+            perror("ERROR accepting connection");
+            continue;
+        }
+
+        if(!is_full(pl)){
+            send(client_fd,SERVER_FULL_MSG, strlen(SERVER_FULL_MSG),0);
+            close(client_fd);
+            free(args);
+            printf("A client tried to connect, but the server is full.\n");
+            continue;
+        }
+
+        args->pl = pl;
+        args->p = create_player(pl,client_fd);
+
+        pthread_t thread_id;
+        if (pthread_create(&thread_id,NULL,handle_client,args) != 0){
+            perror("ERROR creating thread\n");
+            remove_player(args->pl,args->p); // Think to remove player from the pl
+            close(client_fd);
+            free(args);
+            continue;
+        }
+
+        pthread_detach(thread_id);
     }
-    pthread_detach(thread_id);
     return NULL;
-}
-
-void *manage_games_routine(void *datas){
-
-}
-
-/**
- * Ferme le serveur proprement
- * @param listen_fd le socket d'écoute
- */
-void shutdown_server(int listen_fd) {
-    const char *shutdown_msg = "Le serveur va se fermer, vous allez être déconnecté.\n";
-
-    pthread_mutex_lock(&client_mutex);
-    for (int i = 0; i < playerList.players_count; ++i) {
-        send(playerList.players[i].socket_fd, shutdown_msg, strlen(shutdown_msg), 0);
-        close(playerList.players[i].socket_fd);  // Fermer chaque socket client
-    }
-    playerList.players_count = 0;
-    pthread_mutex_unlock(&client_mutex);
-
-    close(listen_fd);  // Fermer le socket d'écoute du serveur
-    printf("Serveur fermé.\n");
 }
 
 /**
@@ -233,8 +147,8 @@ void shutdown_server(int listen_fd) {
  * @param sig
  */
 void handle_sigint(int sig) {
-    if (p_listen_fd) shutdown_server(*p_listen_fd);  // Utiliser la valeur pointée
-    exit(0);  // Quitter proprement
+    keepalive = 0;
+    pthread_cond_signal(&keepalive_cond);  // Signale au th
 }
 
 /**
@@ -272,16 +186,32 @@ int main(int argc, char* argv[]) {
     }
     signal(SIGINT,handle_sigint);
 
+    pthread_mutex_init(&keepalive_mutex,NULL);
+    pthread_cond_init(&keepalive_cond,NULL);
+
     int port = atoi(argv[1]);
     int backlog = atoi(argv[2]);
     int listen_fd = create_listening_socket(port,backlog);
-    p_listen_fd = &listen_fd;
 
-    //keepalive ?
-    while(1){
-        handle_new_connection(listen_fd);
+    PlayerList *pl = init_pl(4);
+
+    ListentThreadArgs *args = malloc(sizeof(ClientThreadArgs));
+    args->pl = pl;
+    args->listen_fd = listen_fd;
+
+    pthread_t tid;
+    if (pthread_create(&tid,NULL,handle_new_connection,args) != 0){
+        perror("ERROR creating thread\n");
+        free(args);
+        exit(EXIT_FAILURE);
     }
 
+    pthread_cond_wait(&keepalive_cond, &keepalive_mutex);  // Attend que le signal SIGINT soit traité
+
+    broadcast_message("Le serveur va se fermer, vous allez être déconnecté.\n",pl,NULL,0);
+    free_player_list(pl);
     close(listen_fd);
+
+    printf("Serveur fermé\n");
     return 0;
 }
