@@ -11,6 +11,7 @@
 #define NEWP_BROADCAST "%s a rejoint la partie ! Joueur connecté %d\n"
 #define LEAVEP_BROADCAST "%s a quitté! Joueurs connectés: %d\n"
 #define READYP_BROADCAST "[%d/ %d] joueur prêt\n"
+#define SEND_CARD "Vous avez reçus la carte %d\n"
 
 #define B_CONSOLE 1
 
@@ -19,6 +20,7 @@ typedef struct {
     char name[50];
     int ready;
     int id;
+    int* cards;
 }Player;
 
 typedef struct {
@@ -31,6 +33,7 @@ typedef struct {
 PlayerList* init_pl(int max_players);
 void free_player_list(PlayerList* players);
 Player *create_player(PlayerList *players,int socket_fd);
+void init_player_card(PlayerList* pl, int nb_cards);
 int remove_player(PlayerList* players, Player *p);
 int update_ready_player(PlayerList *players, Player *p, int state);
 int set_player_name(PlayerList *players, Player *p, char* name);
@@ -39,6 +42,8 @@ int broadcast_message(const char* msg, PlayerList *players, Player *exclude_play
 void new_player_broadcast(PlayerList *players, Player *p);
 void leave_broadcast(PlayerList *players, Player *p);
 void ready_player_broadcast(PlayerList *players);
+
+void send_card_message(Player *p, int card);
 
 int is_full(PlayerList *playerList);
 int get_ready_count(PlayerList *pl);

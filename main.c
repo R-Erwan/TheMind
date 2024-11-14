@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include "playersRessources.h"
+#include "Game.h"
 
 #define MAX_CLIENTS 2
 #define SERVER_FULL_MSG "Le serveur est plein. Veuillez réessayer plus tard.\n"
@@ -27,6 +28,8 @@ typedef struct{
 volatile int keepalive = 1;
 pthread_cond_t keepalive_cond;
 pthread_mutex_t keepalive_mutex;
+
+Game *game_ptr; //TEMPORAIRE TEST
 
 /* Affiche un message d'érreur critique et ferme le programme */
 void fatal_error(const char* msg){
@@ -69,6 +72,7 @@ void *handle_client(void *arg) {
         if(strncmp(buffer,CMD_READY, strlen(CMD_READY)) == 0){
             update_ready_player(pl,p,1);
             ready_player_broadcast(pl);
+            start_game(game_ptr); //TEMPORAIRE POUR TEST
         } else if (strncmp(buffer,CMD_UNREADY, strlen(CMD_UNREADY)) == 0){
             update_ready_player(pl,p,0);
             ready_player_broadcast(pl);
@@ -187,11 +191,17 @@ int main(int argc, char* argv[]) {
     pthread_mutex_init(&keepalive_mutex,NULL); //Init mutex keepalive for stopping serveur.
     pthread_cond_init(&keepalive_cond,NULL); //Init condition.
 
+    srand(time(NULL));
+
     int port = atoi(argv[1]); // Listening port.
     int backlog = atoi(argv[2]); // Max connection on waiting queue.
     int listen_fd = create_listening_socket(port,backlog);
 
     PlayerList *pl = init_pl(4); // Create the player list
+    // ********* TEMPORAIRE TEST
+    Game *g = create_game(pl);
+    game_ptr = g;
+    // *********
 
     ListentThreadArgs *args = malloc(sizeof(ClientThreadArgs)); // Listening Thread args
     args->pl = pl;

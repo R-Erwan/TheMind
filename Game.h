@@ -10,12 +10,20 @@ typedef struct {
     int round;
     PlayerList *playerList;
     int *board;
+    pthread_rwlock_t mutex;
 }Game;
 
-void start_game();
-void distribute_card();
-void play_card();
-void win_round();
-void loose_round();
+Game *create_game(PlayerList *pl);
+void free_game(Game* g);
+
+int start_game(Game* g);
+void distribute_card(Game *g);
+int play_card(Game *g, Player *p,int card);
+void win_round(Game *g);
+void loose_round(Game *g);
+void play_next_round(Game *g);
+void stop_game(Game *g);
+void countdown(Game *g, int sleep_delta);
+
 
 #endif //THEMIND_GAME_H

@@ -31,7 +31,7 @@ PlayerList* init_pl(int max_players) {
     pthread_rwlock_init(&players->mutexRW, NULL);
 
     return players;
-}-
+}
 
 /**
  * @brief Frees the memory allocated for the player list.
@@ -44,6 +44,9 @@ PlayerList* init_pl(int max_players) {
 void free_player_list(PlayerList* players){
     if(players){
         pthread_rwlock_destroy(&players->mutexRW);
+        for (int i = 0; i < players->count - 1; ++i) {
+            free(players->players[i].cards);
+        }
         free(players->players);
         free(players);
     }
@@ -74,6 +77,7 @@ Player* create_player(PlayerList* players, int socket_fd) {
     player->socket_fd = socket_fd;
     player->ready = 0;
     player->id = players->count - 1;
+    player->cards = NULL;
     snprintf(player->name,sizeof(player->name),"Anonyme%d",player->id);
 
     pthread_rwlock_unlock(&players->mutexRW);
@@ -228,7 +232,22 @@ int get_ready_count(PlayerList *pl){
             count++;
     }
     pthread_rwlock_unlock(&pl->mutexRW);
+
     return count;
+}
+
+void init_player_card(PlayerList *pl, int nb_cards) {
+    pthread_rwlock_wrlock(&pl->mutexRW);
+    for (int i = 0; i < pl->count; ++i) {
+        pl->players[i].cards = malloc(sizeof (int) * nb_cards);
+    }
+    pthread_rwlock_unlock(&pl->mutexRW);
+}
+
+void send_card_message(Player *p, int card) {
+    char msg[128];
+    snprintf(msg, sizeof msg, SEND_CARD, card);
+    send(p->socket_fd,msg,strlen(msg),0);
 }
 
 
