@@ -109,8 +109,6 @@ void *handle_new_connection(void *argsT){
 
         int client_fd = accept(listen_fd, (struct sockaddr*)&client_addr, &client_len);
 
-        printf("CC\n");
-
         if (client_fd == -1) {
             free(args);
             perror("ERROR accepting connection");
@@ -184,30 +182,31 @@ int main(int argc, char* argv[]) {
         fprintf(stderr,"Usage : %s <port> <backlog>\n",argv[0]);
         exit(EXIT_FAILURE);
     }
-    signal(SIGINT,handle_sigint);
+    signal(SIGINT,handle_sigint); // Catch signal SIGINT (CTRL +C).
 
-    pthread_mutex_init(&keepalive_mutex,NULL);
-    pthread_cond_init(&keepalive_cond,NULL);
+    pthread_mutex_init(&keepalive_mutex,NULL); //Init mutex keepalive for stopping serveur.
+    pthread_cond_init(&keepalive_cond,NULL); //Init condition.
 
-    int port = atoi(argv[1]);
-    int backlog = atoi(argv[2]);
+    int port = atoi(argv[1]); // Listening port.
+    int backlog = atoi(argv[2]); // Max connection on waiting queue.
     int listen_fd = create_listening_socket(port,backlog);
 
-    PlayerList *pl = init_pl(4);
+    PlayerList *pl = init_pl(4); // Create the player list
 
-    ListentThreadArgs *args = malloc(sizeof(ClientThreadArgs));
+    ListentThreadArgs *args = malloc(sizeof(ClientThreadArgs)); // Listening Thread args
     args->pl = pl;
     args->listen_fd = listen_fd;
 
     pthread_t tid;
-    if (pthread_create(&tid,NULL,handle_new_connection,args) != 0){
+    if (pthread_create(&tid,NULL,handle_new_connection,args) != 0){ // Create listening thread
         perror("ERROR creating thread\n");
         free(args);
         exit(EXIT_FAILURE);
     }
 
-    pthread_cond_wait(&keepalive_cond, &keepalive_mutex);  // Attend que le signal SIGINT soit traité
+    pthread_cond_wait(&keepalive_cond, &keepalive_mutex);  // wait for the sigint signal
 
+    /* Shutdown server and free ressources*/
     broadcast_message("Le serveur va se fermer, vous allez être déconnecté.\n",pl,NULL,0);
     free_player_list(pl);
     close(listen_fd);

@@ -31,7 +31,7 @@ PlayerList* init_pl(int max_players) {
     pthread_rwlock_init(&players->mutexRW, NULL);
 
     return players;
-}
+}-
 
 /**
  * @brief Frees the memory allocated for the player list.
@@ -168,24 +168,43 @@ int broadcast_message(const char* msg, PlayerList *players, Player *exclude_play
     return 0;
 }
 
+/**
+ * @brief Broadcast message to all player that theres a new player.
+ * @param players Pointer to the list of player.
+ * @param p Pointer on the new player joining.
+ */
 void new_player_broadcast(PlayerList *players, Player *p){
     char msg[128];
     snprintf(msg, sizeof msg, NEWP_BROADCAST, p->name, players->count);
     broadcast_message(msg,players,p,B_CONSOLE);
 }
 
+/**
+ * @brief Broadcast message to all, that a player as quit.
+ * @param players Pointer to the list of player.
+ * @param p Pointer to the player who quit.
+ */
 void leave_broadcast(PlayerList *players, Player *p){
     char message[128];
     snprintf(message, sizeof message, LEAVEP_BROADCAST, p->name, players->count);
     broadcast_message(message,players,NULL,B_CONSOLE);
 }
 
+/**
+ * @brief Broadcast the ratio of ready player.
+ * @param players Pointer to the the list of player.
+ */
 void ready_player_broadcast(PlayerList *players){
     char message[128];
     snprintf(message, sizeof message, READYP_BROADCAST, get_ready_count(players),players->count);
     broadcast_message(message, players,NULL,B_CONSOLE);
 }
 
+/**
+ * @brief test is the list is full
+ * @param playerList Pointer to the player list
+ * @return 1 if the list is full, 0 if theres is still place
+ */
 int is_full(PlayerList *playerList){
     pthread_rwlock_rdlock(&playerList->mutexRW);
     if(playerList->count == playerList->max){
@@ -196,6 +215,11 @@ int is_full(PlayerList *playerList){
     return 1;
 }
 
+/**
+ * @brief Calc the number of player ready.
+ * @param pl Pointer to the list of player.
+ * @return Number of player's ready.
+ */
 int get_ready_count(PlayerList *pl){
     pthread_rwlock_rdlock(&pl->mutexRW);
     int count = 0;
