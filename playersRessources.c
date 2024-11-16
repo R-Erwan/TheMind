@@ -8,6 +8,63 @@
 #include "playersRessources.h"
 
 /**
+ * @brief Creates a new player and adds them to the player list.
+ *
+ * This function checks if the player list has reached its maximum capacity
+ * or if the player's name is too long. If conditions are met, it allocates
+ * a new player, and point the array player to the player, initializes the player with a default name and
+ * socket descriptor, and adds them to the list.
+ *
+ * @param players Pointer to the player list.
+ * @param socket_fd Socket descriptor of the player.
+ * @return A pointer to the new Player structure if successful,
+ *         or NULL if the player limit is reached or an error occurs.
+ */
+Player* create_player(PlayerList* players, int socket_fd) {
+    if (players->count >= players->max) {
+        return NULL;  // Limite de joueurs atteinte ou nom trop long
+    }
+    pthread_rwlock_wrlock(&players->mutexRW);
+
+    Player *player = malloc(sizeof(Player));
+    player->socket_fd = socket_fd;
+    player->ready = 0;
+    player->id = players->count;
+    player->cards = NULL;
+    snprintf(player->name,sizeof(player->name),"Anonyme%d",player->id);
+
+    players->players[players->count] = player;
+    players->count++;
+
+    pthread_rwlock_unlock(&players->mutexRW);
+    return player;
+}
+/**
+ * @brief Frees all dynamically allocated resources for a player and deletes the player structure.
+ *
+ * This function first frees the player's card array if it was allocated,
+ * and then frees the memory associated with the `Player` structure itself.
+ * It also ensures that pointers are set to `NULL` after being freed to avoid accidental use.
+ *
+ * @param player A pointer to the `Player` structure to be freed.
+ *               If `player` is `NULL`, the function does nothing.
+ *
+ * @note This function is intended to be used when completely removing a player,
+ *       for example, during disconnection.
+ */
+void free_player(Player* player) {
+    if (player == NULL) {
+        return;
+    }
+
+    if (player->cards != NULL) {
+        free(player->cards);
+        player->cards = NULL;
+    }
+
+    free(player);
+}
+/**
  * @brief Initializes a new player list with a defined maximum capacity.
  *
  * Allocates the necessary memory for the PlayerList structure and the dynamic
@@ -32,7 +89,6 @@ PlayerList* init_pl(int max_players) {
 
     return players;
 }
-
 /**
  * @brief Frees the memory allocated for the player list.
  *
@@ -45,45 +101,12 @@ void free_player_list(PlayerList* players){
     if(players){
         pthread_rwlock_destroy(&players->mutexRW);
         for (int i = 0; i < players->count - 1; ++i) {
-            free(players->players[i].cards);
+            free_player(players->players[i]);
         }
         free(players->players);
         free(players);
     }
 }
-
-/**
- * @brief Creates a new player and adds them to the player list.
- *
- * This function checks if the player list has reached its maximum capacity
- * or if the player's name is too long. If conditions are met, it allocates
- * a new slot in the player array, initializes the player with the name and
- * socket descriptor, and adds them to the list.
- *
- * @param players Pointer to the player list.
- * @param socket_fd Socket descriptor of the player.
- * @param name Name of the player (limited to 50 characters).
- * @return A pointer to the new Player structure if successful,
- *         or NULL if the player limit is reached or an error occurs.
- */
-Player* create_player(PlayerList* players, int socket_fd) {
-    if (players->count >= players->max) {
-        return NULL;  // Limite de joueurs atteinte ou nom trop long
-    }
-
-    pthread_rwlock_wrlock(&players->mutexRW);
-    Player* player = &players->players[players->count++];
-
-    player->socket_fd = socket_fd;
-    player->ready = 0;
-    player->id = players->count - 1;
-    player->cards = NULL;
-    snprintf(player->name,sizeof(player->name),"Anonyme%d",player->id);
-
-    pthread_rwlock_unlock(&players->mutexRW);
-    return player;
-}
-
 /**
  * @brief Removes a specific player from the player list.
  *
@@ -100,13 +123,15 @@ int remove_player(PlayerList* players, Player* p) {
 
     int player_found = 0;
     for (int i = 0; i < players->count; ++i) {
-        if (players->players[i].id == p->id) {
+        if (players->players[i]->id == p->id) {
             player_found = 1;
+
+            free_player(p);
 
             // Remplace le joueur supprimé par le dernier joueur de la liste
             if (i != players->count - 1) {
                 players->players[i] = players->players[players->count - 1];
-                players->players[i].id = i;  // Met à jour l'ID
+                players->players[i]->id = i;  // Met à jour l'ID
             }
 
             players->count--;
@@ -117,7 +142,6 @@ int remove_player(PlayerList* players, Player* p) {
     pthread_rwlock_unlock(&players->mutexRW);
     return player_found;
 }
-
 /**
  * @brief Change ready state of a specific player.
  *
@@ -136,11 +160,28 @@ int update_ready_player(PlayerList *players, Player *p, int state){
     pthread_rwlock_wrlock(&players->mutexRW);
     p->ready = !p->ready;
     pthread_rwlock_unlock(&players->mutexRW);
+    ready_player_broadcast(players);
     return 0;
 }
-
+/**
+ * @brief Sets the name of a player in a thread-safe manner.
+ *
+ * This function validates the provided name to ensure it meets the required
+ * length constraints (between 3 and 49 characters). If valid, it updates
+ * the player's name while holding a write lock on the `PlayerList` to ensure
+ * thread safety. The function also removes any trailing newline character
+ * from the input name.
+ *
+ * @param players A pointer to the `PlayerList` structure containing the player.
+ * @param p A pointer to the `Player` whose name is being updated.
+ * @param name The new name to assign to the player. Must be between 3 and 49 characters.
+ *
+ * @return 0 on success, -1 if the name is invalid (too short or too long).
+ *
+ * @note This function modifies the player's name in-place and requires
+ */
 int set_player_name(PlayerList *players, Player *p, char* name){
-    if(strlen(name) >= 50)
+    if(strlen(name) >= 50 || strlen(name) < 3)
         return -1;
 
     pthread_rwlock_wrlock(&players->mutexRW);
@@ -149,7 +190,6 @@ int set_player_name(PlayerList *players, Player *p, char* name){
     pthread_rwlock_unlock(&players->mutexRW);
     return 0;
 }
-
 /**
  * @brief Broadcast message to all client.
  * @param msg The message to send
@@ -161,8 +201,8 @@ int set_player_name(PlayerList *players, Player *p, char* name){
 int broadcast_message(const char* msg, PlayerList *players, Player *exclude_player, int params){
     pthread_rwlock_rdlock(&players->mutexRW);
     for (int i = 0; i < players->count; ++i) {
-        if(exclude_player == NULL || players->players[i].id != exclude_player->id){
-            send(players->players[i].socket_fd, msg, strlen(msg),0);
+        if(exclude_player == NULL || players->players[i]->id != exclude_player->id){
+            send(players->players[i]->socket_fd, msg, strlen(msg),0);
         }
     }
     if(params == B_CONSOLE){
@@ -171,7 +211,6 @@ int broadcast_message(const char* msg, PlayerList *players, Player *exclude_play
     pthread_rwlock_unlock(&players->mutexRW);
     return 0;
 }
-
 /**
  * @brief Broadcast message to all player that theres a new player.
  * @param players Pointer to the list of player.
@@ -182,7 +221,6 @@ void new_player_broadcast(PlayerList *players, Player *p){
     snprintf(msg, sizeof msg, NEWP_BROADCAST, p->name, players->count);
     broadcast_message(msg,players,p,B_CONSOLE);
 }
-
 /**
  * @brief Broadcast message to all, that a player as quit.
  * @param players Pointer to the list of player.
@@ -190,10 +228,9 @@ void new_player_broadcast(PlayerList *players, Player *p){
  */
 void leave_broadcast(PlayerList *players, Player *p){
     char message[128];
-    snprintf(message, sizeof message, LEAVEP_BROADCAST, p->name, players->count);
+    snprintf(message, sizeof message, LEAVEP_BROADCAST, p->name, players->count - 1);
     broadcast_message(message,players,NULL,B_CONSOLE);
 }
-
 /**
  * @brief Broadcast the ratio of ready player.
  * @param players Pointer to the the list of player.
@@ -203,7 +240,6 @@ void ready_player_broadcast(PlayerList *players){
     snprintf(message, sizeof message, READYP_BROADCAST, get_ready_count(players),players->count);
     broadcast_message(message, players,NULL,B_CONSOLE);
 }
-
 /**
  * @brief test is the list is full
  * @param playerList Pointer to the player list
@@ -218,7 +254,6 @@ int is_full(PlayerList *playerList){
     pthread_rwlock_unlock(&playerList->mutexRW);
     return 1;
 }
-
 /**
  * @brief Calc the number of player ready.
  * @param pl Pointer to the list of player.
@@ -228,27 +263,123 @@ int get_ready_count(PlayerList *pl){
     pthread_rwlock_rdlock(&pl->mutexRW);
     int count = 0;
     for (int i = 0; i < pl->count; ++i) {
-        if(pl->players[i].ready == 1)
+        if(pl->players[i]->ready == 1)
             count++;
     }
     pthread_rwlock_unlock(&pl->mutexRW);
 
     return count;
 }
+/**
+ * @brief Initializes the cards array for all players in the PlayerList.
+ *
+ * This function allocates memory for the `cards` array of each player in the
+ * `PlayerList`. The size of the `cards` array is determined by the `nb_cards`
+ * parameter.
 
+ * @param pl A pointer to the `PlayerList` structure containing the players.
+ * @param nb_cards The number of cards to allocate for each player. Each
+ *                 player's `cards` array will be of size `nb_cards` and
+ *                 zero-initialized.
+ *
+ * @note If a player's `cards` array was already allocated, this function does
+ *       not free the previous allocation, potentially leading to a memory leak.
+ *       Ensure proper memory management before calling this function.
+ */
 void init_player_card(PlayerList *pl, int nb_cards) {
     pthread_rwlock_wrlock(&pl->mutexRW);
     for (int i = 0; i < pl->count; ++i) {
-        pl->players[i].cards = malloc(sizeof (int) * nb_cards);
+        pl->players[i]->cards = calloc(nb_cards,sizeof (int));
     }
     pthread_rwlock_unlock(&pl->mutexRW);
 }
-
-void send_card_message(Player *p, int card) {
-    char msg[128];
-    snprintf(msg, sizeof msg, SEND_CARD, card);
-    send(p->socket_fd,msg,strlen(msg),0);
+/**
+ * @brief Frees the memory allocated for the `cards` array of all players in the PlayerList.
+ *
+ * This function iterates through the `PlayerList` and releases the memory allocated
+ * for each player's `cards` array.
+ *
+ * @param pl A pointer to the `PlayerList` structure containing the players..
+ *
+ * @note After calling this function, the `cards` pointer of each player will be set
+ *       to `NULL` to prevent dangling pointers.
+ */
+void free_players_card(PlayerList *pl){
+    if (pl == NULL) {
+        fprintf(stderr, "Error: PlayerList is NULL\n");
+        return;
+    }
+    pthread_rwlock_wrlock(&pl->mutexRW);
+    for (int i = 0; i < pl->count; ++i) {
+        if (pl->players[i] != NULL && pl->players[i]->cards != NULL) {
+            free(pl->players[i]->cards);
+            pl->players[i]->cards = NULL;
+        }
+    }
+    pthread_rwlock_unlock(&pl->mutexRW);
 }
+/**
+ * @brief Sends a card-related message to the specified player.
+ *
+ * This function formats a message containing the card value and sends it
+ * to the player through their socket. The message is based on the `SEND_CARD`
+ * format string, which should include a placeholder for the card value (e.g., `"%d"`).
+ *
+ * @param p A pointer to the `Player` structure representing the player
+ *          to whom the message is sent. The `Player` must have a valid
+ *          `socket_fd`.
+ * @param card An integer representing the card value to include in the message.
+ *
+ *
+ * @example
+ * #define SEND_CARD "You received the card: %d\n"
+ * Player p = {.socket_fd = client_socket_fd};
+ * send_card_message(&p, 42); // Sends: "You received the card: 42"
+ */
+void send_card_message(Player *p, int card) {
+    if (p == NULL || p->socket_fd < 0) {
+        fprintf(stderr, "Error: Invalid player or socket.\n");
+        return;
+    }
+
+    char msg[128];
+    if (snprintf(msg, sizeof msg, SEND_CARD, card) >= sizeof msg) {
+        fprintf(stderr, "Error: Message truncated.\n");
+        return;
+    }
+
+    ssize_t bytes_sent = send(p->socket_fd, msg, strlen(msg), 0);
+    if (bytes_sent == -1) {
+        perror("Error sending card message");
+    } else if (bytes_sent < (ssize_t)strlen(msg)) {
+        fprintf(stderr, "Warning: Partial message sent (%zd of %zu bytes).\n", bytes_sent, strlen(msg));
+    }
+}
+/**
+ * @brief Resets the "ready" status of all players in the player list.
+ *
+ * This function iterates through the list of players and sets their `ready`
+ * status to `0`. After resetting, it broadcasts
+ * the updated readiness status to all clients.
+ *
+ * @param players A pointer to the `PlayerList` structure containing the list of players.
+ *
+ */
+void reset_ready_players(PlayerList *players) {
+    if (players == NULL) {
+        fprintf(stderr, "Error: PlayerList is NULL.\n");
+        return;
+    }
+    pthread_rwlock_wrlock(&players->mutexRW);
+    for (int i = 0; i < players->count; ++i) {
+        if (players->players[i] != NULL) {
+            players->players[i]->ready = 0;
+        }
+    }
+    pthread_rwlock_unlock(&players->mutexRW);
+    ready_player_broadcast(players);
+}
+
 
 
 

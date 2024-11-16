@@ -1,0 +1,66 @@
+==4778== Memcheck, a memory error detector
+==4778== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
+==4778== Using Valgrind-3.19.0 and LibVEX; rerun with -h for copyright info
+==4778== Command: ./TheMind 4242 10
+==4778==
+Server listening on port 4242
+[BROADCAST] : Toto a rejoint la partie ! Joueur connecté 1
+[BROADCAST] : Toto a quitté! Joueurs connectés: 0
+[BROADCAST] : Toto a rejoint la partie ! Joueur connecté 1
+[BROADCAST] : [1/ 1] joueur prêt
+[BROADCAST] : Début du round : 1
+[BROADCAST] : La partie vas commencer dans :
+[BROADCAST] : 3
+[BROADCAST] : 2
+[BROADCAST] : 1
+[BROADCAST] : Toto -> 42
+[BROADCAST] : [42]
+[BROADCAST] : Bravo vous avez gagné la manche 1
+[BROADCAST] : [0/ 1] joueur prêt
+[BROADCAST] : Toto a quitté! Joueurs connectés: 0
+[BROADCAST] : Un joueur a mis fin a la partie, retour au lobby
+^C==4778== Invalid free() / delete / delete[] / realloc()
+==4778==    at 0x484317B: free (vg_replace_malloc.c:872)
+==4778==    by 0x10A666: free_game (in /mnt/c/Users/erwan/Documents/ProjectsIDE/ProjectsCLion/TheMind/cmake-build-release-wsl/TheMind)
+==4778==    by 0x1093DD: main (in /mnt/c/Users/erwan/Documents/ProjectsIDE/ProjectsCLion/TheMind/cmake-build-release-wsl/TheMind)
+==4778==  Address 0x4a3dc70 is 0 bytes inside a block of size 4 free'd
+==4778==    at 0x484317B: free (vg_replace_malloc.c:872)
+==4778==    by 0x10AD91: play_card (in /mnt/c/Users/erwan/Documents/ProjectsIDE/ProjectsCLion/TheMind/cmake-build-release-wsl/TheMind)
+==4778==    by 0x1097FA: handle_command (in /mnt/c/Users/erwan/Documents/ProjectsIDE/ProjectsCLion/TheMind/cmake-build-release-wsl/TheMind)
+==4778==    by 0x109A9A: handle_client (in /mnt/c/Users/erwan/Documents/ProjectsIDE/ProjectsCLion/TheMind/cmake-build-release-wsl/TheMind)
+==4778==    by 0x48E21C3: start_thread (pthread_create.c:442)
+==4778==    by 0x4961ABF: clone (clone.S:100)
+==4778==  Block was alloc'd at
+==4778==    at 0x48455EF: calloc (vg_replace_malloc.c:1328)
+==4778==    by 0x10AA32: start_round (in /mnt/c/Users/erwan/Documents/ProjectsIDE/ProjectsCLion/TheMind/cmake-build-release-wsl/TheMind)
+==4778==    by 0x10AB08: start_game (in /mnt/c/Users/erwan/Documents/ProjectsIDE/ProjectsCLion/TheMind/cmake-build-release-wsl/TheMind)
+==4778==    by 0x109A9A: handle_client (in /mnt/c/Users/erwan/Documents/ProjectsIDE/ProjectsCLion/TheMind/cmake-build-release-wsl/TheMind)
+==4778==    by 0x48E21C3: start_thread (pthread_create.c:442)
+==4778==    by 0x4961ABF: clone (clone.S:100)
+==4778==
+Serveur fermé
+==4778==
+==4778== HEAP SUMMARY:
+==4778==     in use at exit: 288 bytes in 2 blocks
+==4778==   total heap usage: 19 allocs, 18 frees, 2,307 bytes allocated
+==4778==
+==4778== 272 bytes in 1 blocks are possibly lost in loss record 2 of 2
+==4778==    at 0x48455EF: calloc (vg_replace_malloc.c:1328)
+==4778==    by 0x4010C62: calloc (rtld-malloc.h:44)
+==4778==    by 0x4010C62: allocate_dtv (dl-tls.c:376)
+==4778==    by 0x401165D: _dl_allocate_tls (dl-tls.c:635)
+==4778==    by 0x48E2D7E: allocate_stack (allocatestack.c:423)
+==4778==    by 0x48E2D7E: pthread_create@@GLIBC_2.34 (pthread_create.c:650)
+==4778==    by 0x1093AB: main (in /mnt/c/Users/erwan/Documents/ProjectsIDE/ProjectsCLion/TheMind/cmake-build-release-wsl/TheMind)
+==4778==
+==4778== LEAK SUMMARY:
+==4778==    definitely lost: 0 bytes in 0 blocks
+==4778==    indirectly lost: 0 bytes in 0 blocks
+==4778==      possibly lost: 272 bytes in 1 blocks
+==4778==    still reachable: 16 bytes in 1 blocks
+==4778==         suppressed: 0 bytes in 0 blocks
+==4778== Reachable blocks (those to which a pointer was found) are not shown.
+==4778== To see them, rerun with: --leak-check=full --show-leak-kinds=all
+==4778==
+==4778== For lists of detected and suppressed errors, rerun with: -s
+==4778== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)

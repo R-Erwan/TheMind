@@ -7,4 +7,8 @@ add_executable(TheMind main.c
         playersRessources.c
         playersRessources.h
         Game.c
-        Game.h)
+        Game.h
+        queue.c
+        queue.h
+        utils.c
+        utils.h)

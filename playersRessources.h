@@ -24,25 +24,29 @@ typedef struct {
 }Player;
 
 typedef struct {
-    Player* players;
+    Player **players;
     int count;
     int max;
     pthread_rwlock_t mutexRW;
 }PlayerList;
 
+Player *create_player(PlayerList *players,int socket_fd);
+void free_player(Player *player);
 PlayerList* init_pl(int max_players);
 void free_player_list(PlayerList* players);
-Player *create_player(PlayerList *players,int socket_fd);
+
 void init_player_card(PlayerList* pl, int nb_cards);
+void free_players_card(PlayerList *pl);
+
 int remove_player(PlayerList* players, Player *p);
 int update_ready_player(PlayerList *players, Player *p, int state);
+void reset_ready_players(PlayerList *players);
 int set_player_name(PlayerList *players, Player *p, char* name);
 
 int broadcast_message(const char* msg, PlayerList *players, Player *exclude_player, int params);
 void new_player_broadcast(PlayerList *players, Player *p);
 void leave_broadcast(PlayerList *players, Player *p);
 void ready_player_broadcast(PlayerList *players);
-
 void send_card_message(Player *p, int card);
 
 int is_full(PlayerList *playerList);
