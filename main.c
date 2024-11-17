@@ -219,6 +219,9 @@ void *handle_client(void *arg) {
         end_round(game,0);
         end_game(game);
     }
+    if(game->state == LOBBY_STATE){
+        reset_ready_players(pl);
+    }
 
     return NULL;
 }
