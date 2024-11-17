@@ -11,4 +11,6 @@ add_executable(TheMind main.c
         queue.c
         queue.h
         utils.c
-        utils.h)
+        utils.h
+        StatsManager.c
+        StatsManager.h)
