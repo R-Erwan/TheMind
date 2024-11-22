@@ -154,6 +154,7 @@ void end_round(Game *g, int win){
         char msg[128];
         snprintf(msg,sizeof msg,"Manche %d perdu ! BOUHHH\n",g->round);
         broadcast_message(msg,g->playerList,NULL,B_CONSOLE);
+        g->round = DEFAULT_ROUND;
     }
 
     //TODO gen statistiques
