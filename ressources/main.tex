@@ -1,0 +1,105 @@
+\documentclass[a4paper,11pt,landscape]{article}
+\usepackage[margin=0.1in]{geometry}
+% Paquets pour le français et les caractères spéciaux
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{subcaption} % Pour les sous-figures
+\usepackage{float}
+\usepackage{multicol}
+\usepackage{amsmath}
+\usepackage{wrapfig}    % Pour les images avec du texte contournant
+\usepackage{fancyhdr}
+\usepackage[most]{tcolorbox}
+
+\definecolor{ora1}{rgb}{0.78,0.37,0.26}
+\definecolor{ora2}{rgb}{0.93,0.80,0.72}
+
+\title{\vspace{-1cm}\Huge \textbf{Rapport d'analyse statistique} \\ \Large The Mind\vspace{-1cm}}
+\date{}
+
+\pagecolor{ora1}
+\begin{document}
+\color{white}
+\maketitle
+\begin{multicols}{2} % 2 colonnes
+    \noindent
+    \begin{tcolorbox}[colback=ora2,colframe=ora2]
+        \begin{tcolorbox}[colback=ora1,colframe=ora1]
+            \centering \textcolor{white}{\textbf{Nombre de joueurs}}
+        \end{tcolorbox}
+    \centering \textbf{
+    %DATA_PLAYERS
+2
+    } joueurs + \textbf{
+    %DATA_ROBOTS
+    1
+    } robot
+
+    \begin{tcolorbox}[colback=ora1,colframe=ora1]
+        \centering \textcolor{white}{\textbf{Rounds}}
+    \end{tcolorbox}
+        \centering \textbf{
+        %DATA_ROUNDS
+4
+        } rounds \\
+        \centering \textbf{
+        %DATA_WINROUNDS
+3
+        } rounds gagné \\
+        \centering Plus haut round \textbf{
+        %DATA_MAXROUND
+3
+        }
+
+    \begin{tcolorbox}[colback=ora1,colframe=ora1]
+        \centering \textcolor{white}{\textbf{Reaction time moyen}}
+    \end{tcolorbox}
+     \centering \textbf{
+        %DATA_TIME
+11.85
+        }
+
+    \end{tcolorbox}
+
+    \vfill
+
+    \noindent
+    \begin{tcolorbox}[colback=ora2,colframe=ora2]
+        \begin{tcolorbox}[colback=ora1,colframe=ora1]
+            \centering \textcolor{white}{\textbf{Niveau des rounds}}
+        \end{tcolorbox}
+            \centering \includegraphics[width=0.8\textwidth]{../datas/rounds_levels.png}
+
+
+    \end{tcolorbox}
+    \vfill
+\end{multicols}
+
+\begin{multicols}{2}
+     \noindent
+    \begin{tcolorbox}[colback=ora2,colframe=ora2]
+        \begin{tcolorbox}[colback=ora1,colframe=ora1]
+            \centering \textcolor{white}{\textbf{Temps de réaction}}
+        \end{tcolorbox}
+            \centering \includegraphics[width=0.8\textwidth]{../datas/reaction_histogram.png}
+
+    \end{tcolorbox}
+    \vfill
+
+     \noindent
+    \begin{tcolorbox}[colback=ora2,colframe=ora2]
+        \begin{tcolorbox}[colback=ora1,colframe=ora1]
+            \centering \textcolor{white}{\textbf{Cartes perdantes}}
+        \end{tcolorbox}
+            \centering \includegraphics[width=0.8\textwidth]{../datas/loosing_cards.png}
+
+    \end{tcolorbox}
+    \vfill
+\end{multicols}
+
+
+\end{document}

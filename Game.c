@@ -30,6 +30,7 @@ Game *create_game(PlayerList *pl) {
     game->board = NULL;
     game->played_cards_count =0;
     game->state = LOBBY_STATE;
+    game->gameData = NULL;
     pthread_rwlock_init(&game->mutex,NULL);
 
     return game;
@@ -52,6 +53,7 @@ void free_game(Game *g) {
         if (g->board)
             free(g->board);
         pthread_rwlock_destroy(&g->mutex);
+        free(g->gameData);
         destroy_queue(g->cards_queue);
         free(g);
     }
@@ -78,6 +80,9 @@ int start_game(Game *g) {
         pthread_rwlock_unlock(&g->mutex);
         return -1;
     }
+    g->gameData = create_gm(); // Create GameData stats
+    g->gameData->player_count = g->playerList->count; // Set the player number
+
     g->state = GAME_STATE;
     pthread_rwlock_unlock(&g->mutex);
     start_round(g);
@@ -117,7 +122,8 @@ int start_round(Game *g){
 
     init_player_card(g->playerList,g->round); // Malloc player's deck
     distribute_card(g);
-    countdown(g,1);
+    countdown(g,1); // Countdown broadcast.
+    g->startingTime = time(NULL); // Init current timer.
     pthread_rwlock_unlock(&g->mutex);
     return 0;
 }
@@ -144,6 +150,7 @@ void end_round(Game *g, int win){
         char msg[128];
         snprintf(msg,sizeof msg,"Bravo vous avez gagné la manche %d\n",g->round);
         broadcast_message(msg,g->playerList,NULL,B_CONSOLE);
+        add_round(g->gameData,g->round,1); // Add 1 winning round to GameData
 
         //Check if next manche is possible, if there's enough card for every player.
         if((g->round + 1) * (g->playerList->count) <= 99){
@@ -154,10 +161,9 @@ void end_round(Game *g, int win){
         char msg[128];
         snprintf(msg,sizeof msg,"Manche %d perdu ! BOUHHH\n",g->round);
         broadcast_message(msg,g->playerList,NULL,B_CONSOLE);
+        add_round(g->gameData,g->round,0); // Add 1 loosing round to GameData
         g->round = DEFAULT_ROUND;
     }
-
-    //TODO gen statistiques
 
     free_players_card(g->playerList);
     reset_ready_players(g->playerList);
@@ -178,8 +184,13 @@ void end_round(Game *g, int win){
  *
  * @note The function does not free any game resources, as the game may be resumed or reinitialized.
  *       It only resets the round and game state to their initial values.
+ *
+ * @warning The function destroy associate GameData structure, ensure you have nothing to do with it
+ *      after calling this function.
  */
 void end_game(Game *g){
+    send_stats(g); //TODO temporaire pour tester l'intégration des statistiques
+    free_gm(g->gameData); // Destroy GameData
     char msg[128];
     snprintf(msg,sizeof msg,"Un joueur a mis fin a la partie, retour au lobby\n");
     broadcast_message(msg,g->playerList,NULL,B_CONSOLE);
@@ -308,12 +319,19 @@ int play_card(Game *g, Player *p, int card){
     if(card != peek(g->cards_queue)){
         //Branch when the card loose the round, refused
         //TODO AFFICHER LE BOARD COMPLET
+        time_t delta_time = time(NULL) - g->startingTime; // Calc delta time with the starting time of the round.
+        add_loosing_card(g->gameData,card,delta_time);
+
         broadcast_board(g);
         end_round(g,0);
         pthread_rwlock_unlock(&g->mutex); // Cares to unlock mutex AFTER calling loose round
         return WRONG_CARD;
     } else {
         //Branch when the card is accepted
+
+        time_t delta_time = time(NULL) - g->startingTime; // Calc delta time with the starting time of the round.
+        add_card(g->gameData,card,delta_time);
+
         g->board[g->played_cards_count] = dequeue(g->cards_queue);
         g->played_cards_count++;
         broadcast_board(g);
@@ -374,4 +392,18 @@ int set_ready_player(Game *g, Player *p, int state) {
     int res = update_ready_player(g->playerList,p,state);
     pthread_rwlock_unlock(&g->mutex);
     return res;
+}
+
+void send_stats(Game*g){
+    if(g->gameData == NULL){
+        return;
+    }
+    pthread_rwlock_wrlock(&g->mutex);
+    create_uf(g->gameData);
+    write_data_to_file(g->gameData);
+    make_dg(g->gameData->data_fp);
+    make_pdf(g->gameData->data_fp);
+
+    //TODO send pdf file to client
+    pthread_rwlock_unlock(&g->mutex);
 }

@@ -7,7 +7,7 @@
 #include "playersRessources.h"
 #include "utils.h"
 #include "queue.h"
-
+#include "statsManager.h"
 
 #define COUNT_DOWN_MSG "La partie vas commencer dans :\n"
 #define PLAY_CARD_MSG "Go ! Vous pouvez jouez une carte\n"
@@ -73,6 +73,20 @@ typedef struct {
     int state;
 
     /**
+     * @brief Structure to hold alls datas about the game.
+     *
+     * @see statsManager.h
+     */
+    GameData *gameData;
+
+    /**
+     * @brief Start timer of current round.
+     *
+     * This timer is used to calculate the delta time for each played card.
+     */
+    time_t startingTime;
+
+    /**
      * @brief A read-write lock used to ensure thread-safe access to the game state.
      *
      * This lock is used to synchronize access to the game data, ensuring that multiple threads can safely read or
@@ -95,6 +109,8 @@ int play_card(Game *g, Player *p,int card);
 void countdown(Game *g, int sleep_delta);
 void broadcast_board(Game *g);
 int set_ready_player(Game *g,Player *p,int state);
+
+void send_stats(Game*g);
 
 
 #endif //THEMIND_GAME_H
