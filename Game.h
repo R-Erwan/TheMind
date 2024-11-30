@@ -11,6 +11,7 @@
 
 #define COUNT_DOWN_MSG "La partie vas commencer dans :\n"
 #define PLAY_CARD_MSG "Go ! Vous pouvez jouez une carte\n"
+#define STAT_FILE_DL "Le fichier de statistiques est disponible. \n Nom du fichier : %s.pdf\n Pour le récupérer, utiliser la commande : getfile %s.pdf sur le port 4243\n"
 #define DEFAULT_ROUND 1
 #define NO_CARD 1
 #define WRONG_CARD 2

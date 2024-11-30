@@ -12,7 +12,7 @@
 
 #define SERVER_FULL_MSG "Le serveur est plein. Veuillez réessayer plus tard.\n"
 #define GAME_STARTED_MSG "Une partie est déja en cours. Veuillez réessayer plus tard.\n"
-
+#define PDF_DIR "../pdf"
 /**
  * @brief Structure containing arguments for a player management thread.
  *
@@ -36,6 +36,7 @@ typedef struct{
     int listen_fd;
     Game *game;
 } ListentThreadArgs;
+
 
 volatile int keepalive = 1;
 pthread_cond_t keepalive_cond;
@@ -76,6 +77,7 @@ pthread_mutex_t keepalive_mutex;
  *       or invalid commands.
  */
 void handle_command(const char* cmd,Game *g,Player *p){
+    //TODO Ajouter la commande q ou quit pour quitter la partie proprement, pour recevoir les stats avant.
     int state = g->state;
     if(state == 0){
         if(strcmp(cmd,"ready") == 0){
@@ -312,6 +314,50 @@ void *handle_new_connection(void *LTargs){
     return NULL;
 }
 
+void *handle_downloads(void *args){
+    int dl_fd = *(int*)args;
+    free(args);
+
+    printf("[DL] Server ready to handle new downloading request\n");
+    while(keepalive){
+        struct sockaddr_in client_addr;
+        socklen_t addr_len = sizeof(client_addr);
+        int client_fd = accept(dl_fd, (struct sockaddr *)&client_addr, &addr_len);
+        if(dl_fd < 0) {
+            perror("[DL] Error accept");
+            continue;
+        }
+
+        char buffer[1024] = {0};
+        read(client_fd,buffer,sizeof(buffer));
+        printf("[DL] Requête reçue : %s\n",buffer);
+
+        // send file if valide request
+        if(strncmp(buffer, "getfile",7) == 0){
+            char *filename = buffer + 8;
+            filename[strcspn(filename,"\n")] = '\0';
+            char filepath[256];
+            snprintf(filepath,sizeof(filepath),PDF_DIR"/%s",filename);
+            FILE *file = fopen(filepath,"rb");
+            if (file){
+                char file_buf[1024];
+                size_t bytes_read;
+                while ((bytes_read = fread(file_buf,1, sizeof(file_buf),file)) > 0 ){
+                    send(client_fd,file_buf,bytes_read,0);
+                }
+                fclose(file);
+                printf("[DL] Fichier %s envoyé avec succès\n",filename);
+            } else {
+                write(client_fd,"Erreur : fichier non trouvé\n",28);
+            }
+        } else {
+            write(client_fd,"Command invalide\n",19);
+        }
+        close(client_fd);
+    }
+
+    return NULL;
+}
 /**
  * @brief Handles the SIGINT (interrupt) signal by stopping the server.
  *
@@ -418,7 +464,7 @@ int main(int argc, char* argv[]) {
     pthread_mutex_init(&keepalive_mutex,NULL); //Init mutex keepalive for stopping serveur.
     pthread_cond_init(&keepalive_cond,NULL); //Init condition.
 
-    srand(time(NULL));
+    srand(time(NULL)); // Init random seed.
 
     int port = atoi(argv[1]); // Listening port.
     int backlog = atoi(argv[2]); // Max connection on waiting queue.
@@ -427,8 +473,10 @@ int main(int argc, char* argv[]) {
     PlayerList *pl = init_pl(4); // Create the player list
     Game *g = create_game(pl); // Create the game management system.
 
-
-    ListentThreadArgs *LTargs = malloc(sizeof(ClientThreadArgs)); // Listening Thread args
+    /**
+     * Listening Thread.
+     */
+    ListentThreadArgs *LTargs = malloc(sizeof(ListentThreadArgs)); // Listening Thread args
     LTargs->game = g;
     LTargs->listen_fd = listen_fd;
 
@@ -436,6 +484,21 @@ int main(int argc, char* argv[]) {
     if (pthread_create(&tid,NULL,handle_new_connection,LTargs) != 0){ // Create listening thread
         perror("ERROR creating thread\n");
         free(LTargs);
+        exit(EXIT_FAILURE);
+    }
+
+    /**
+     *  Download Thread.
+     */
+    int port2 = atoi(argv[1]) + 1;
+    int download_fd = create_listening_socket(port2,backlog);
+    int *dl_arg = malloc(sizeof(int));
+    *dl_arg = download_fd;
+
+    pthread_t tid_dl;
+    if(pthread_create(&tid_dl,NULL,handle_downloads,dl_arg) != 0){
+        perror("ERROR creating downloading handler thread\n");
+        free(dl_arg);
         exit(EXIT_FAILURE);
     }
 

@@ -404,6 +404,15 @@ void send_stats(Game*g){
     make_dg(g->gameData->data_fp);
     make_pdf(g->gameData->data_fp);
 
-    //TODO send pdf file to client
+    char msg[256];
+    char *filename = strrchr(g->gameData->data_fp,'/');
+    if(filename){
+        filename++;
+    } else {
+        filename = g->gameData->data_fp;
+    }
+    snprintf(msg,sizeof(msg),STAT_FILE_DL,filename,filename);
+    broadcast_message(msg,g->playerList,NULL,B_CONSOLE);
+
     pthread_rwlock_unlock(&g->mutex);
 }
