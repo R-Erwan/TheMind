@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/stat.h>
 #include "statsManager.h"
 
 /**
@@ -63,6 +64,11 @@ char *create_uf(GameData *gm) {
         return NULL;
     }
     fclose(file);
+
+    if(chmod(path,0777) !=0){
+        perror("Erreur lors de la definition des permissions du fichier");
+        return NULL;
+    }
 
     strncpy(gm->data_fp,path,sizeof(path));
     return gm->data_fp;
