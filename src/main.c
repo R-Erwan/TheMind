@@ -102,10 +102,7 @@ void handle_command(const char* cmd, Game *g, Player *p){
         default:
             printf("%s a envoyé : %s\n",p->name,cmd);
     }
-
-        
 }
-
 /**
  * @brief Handles a client connection in a separate thread.
  *
@@ -484,4 +481,3 @@ int main(int argc, char* argv[]) {
     printf("Serveur fermé\n");
     return 0;
 }
-
