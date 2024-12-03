@@ -55,87 +55,55 @@ pthread_mutex_t keepalive_mutex;
  * @param p Pointer to the player structure.
  *          Represents the player who sent the command.
  *
- * ### Behavior:
- * - **Game State 0 (Setup)**:
- *   - `"ready"`: Marks the player as ready. If all players are ready, the game starts.
- *   - `"unready"`: Marks the player as not ready.
- *   - If the game is already in progress, an error message is sent to the player.
- *
- * - **Game State 1 (Round Setup)**:
- *   - `"ready"`: Marks the player as ready for the next round. If all players are ready, the round starts.
- *   - `"unready"`: Marks the player as not ready for the next round.
- *   - If the round is already in progress, an error message is sent to the player.
- *
- * - **Game State 2 (In Progress)**:
- *   - A numeric command is interpreted as a card number. The player attempts to play the card:
- *     - If successful, the card is played.
- *     - If the player does not have the card, an error message is sent.
- *   - Invalid commands result in an error message.
- *
  * @note The function sends feedback messages to the player's socket for errors
  *       or invalid commands.
  */
-void handle_command(const char* cmd,Game *g,Player *p){
-    //TODO Ajouter la commande q ou quit pour quitter la partie proprement, pour recevoir les stats avant.
-    int state = g->state;
-    if(state == 0){
-        if(strcmp(cmd,"ready") == 0){
-            int res = set_ready_player(g,p,1);
-            if(res == 0){
-                start_game(g); //Essaie de lancer la partie
-            } else if( res == -2){
-                char msg[128];
-                snprintf(msg, sizeof msg, "La partie est déja en cours");
-                send(p->socket_fd,msg,strlen(msg),0);
-            }
-        } else if(strcmp(cmd,"unready") == 0){
-            int res = set_ready_player(g,p,0);
-            if(res == -2){
-                char msg[128];
-                snprintf(msg, sizeof msg, "La partie est déja en cours");
-                send(p->socket_fd,msg,strlen(msg),0);
-            }
-        }
-    } else if(state == 1) {
-        if(strcmp(cmd,"ready") == 0){
-            int res = set_ready_player(g,p,1);
-            if(res == 0){
-                start_round(g); //Essaie de lancer le round
-            } else if( res == -2){
-                char msg[128];
-                snprintf(msg, sizeof msg, "La partie est déja en cours");
-                send(p->socket_fd,msg,strlen(msg),0);
-            }
-        } else if(strcmp(cmd,"unready") == 0){
-            int res = set_ready_player(g,p,0);
-            if(res == -2){
-                char msg[128];
-                snprintf(msg, sizeof msg, "La partie est déja en cours\n");
-                send(p->socket_fd,msg,strlen(msg),0);
-            }
-        }
-    } else{
-        int num = ctoint(cmd);
-        if(num == -1){
-            char msg[128];
-            snprintf(msg, sizeof msg, "Vous n'avez pas envoyé un nombre\n");
-            send(p->socket_fd,msg,strlen(msg),0);
-        } else {
-            int res = play_card(g,p,num);
-            if(res == NO_CARD){
-                char msg[128];
-                snprintf(msg, sizeof msg, "Vous n'avez pas cette carte !\n");
-                send(p->socket_fd,msg,strlen(msg),0);
-            }
-        }
-    }
-}
+void handle_command(const char* cmd, Game *g, Player *p){
+    switch (hash_cmd(cmd)) {
+        case READY :
+            if(g->state == LOBBY_STATE || g->state == GAME_STATE) {
+                if(set_ready_player(g,p,1) == -2)
+                    send_p(p,"La partie est déjà en cours\n");
 
-void handle_command2(const char* cmd, Game *g, Player *p){
-    switch (g->state) {
-        case LOBBY_STATE:
+        } else send_p(p,"La partie est déjà en cours\n");
+            break;
+        case UNREADY :
+            if(g->state == LOBBY_STATE || g->state == GAME_STATE) {
+                if(set_ready_player(g,p,0) == -2)
+                    send_p(p,"La partie est déjà en cours\n");
 
+            } else send_p(p,"La partie est déjà en cours\n");
+            break;
+        case START:
+            if(g->state == LOBBY_STATE) {
+                if (start_game(g,p) == -1) // Start game
+                    send_p(p, "Tous les joueurs ne sont pas prêt !\n");
+            } else if(g->state == GAME_STATE){
+                if(start_round(g,p) == -1) // Start round
+                    send_p(p,"Tous les joueurs ne sont pas prêt !\n");
+            } else if(g->state == GAME_STATE){
+                send_p(p,"Vous êtes au milieu d'une manche !\n");
+            }
+            break;
+        case CARD:
+            if(g->state == PLAY_STATE && ctoint(cmd) != -1){
+                int card = ctoint(cmd);
+                if(play_card(g,p,card) == NO_CARD)
+                    send_p(p,"Vous n'avez pas la carte %d\n",card);
+            }
+            break;
+        case STOP:
+            if(g->state == GAME_STATE) {
+                end_game(g,p);
+            } else if (g->state == PLAY_STATE){
+                send_p(p,"Une manche est en cours !\n");
+            }
+            break;
+        default:
+            printf("%s a envoyé : %s\n",p->name,cmd);
     }
+
+        
 }
 
 /**
@@ -221,11 +189,11 @@ void *handle_client(void *arg) {
 
     // End game if needed.
     if(game->state == GAME_STATE ) {
-        end_game(game);
+        end_game(game,p);
     }
     if(game->state == PLAY_STATE){
         end_round(game,0);
-        end_game(game);
+        end_game(game,p);
     }
     if(game->state == LOBBY_STATE){
         reset_ready_players(pl);
@@ -233,7 +201,6 @@ void *handle_client(void *arg) {
 
     return NULL;
 }
-
 /**
  * @brief Handles a new client connection and manages the client thread creation.
  *
@@ -357,7 +324,7 @@ void *handle_downloads(void *args){
                 write(client_fd,"Erreur : fichier non trouvé\n",28);
             }
         } else {
-            write(client_fd,"Command invalide\n",19);
+            write(client_fd,"Commande invalide\n",19);
         }
         close(client_fd);
     }
@@ -386,7 +353,6 @@ void handle_sigint(int sig) {
     keepalive = 0;
     pthread_cond_signal(&keepalive_cond);  // Signale au th
 }
-
 /**
  * @brief Creates and binds a listening socket for the server.
  *
@@ -440,7 +406,6 @@ int create_listening_socket(int port, int backlog){
 
     return listen_fd;
 }
-
 /**
  * @brief Entry point for the server program.
  *
@@ -520,4 +485,3 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-//TODO Gros check sur les fuites mémoires les calloc malloc et free.

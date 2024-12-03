@@ -10,7 +10,7 @@
 #include "queue.h"
 #include "statsManager.h"
 
-#define STAT_FILE_DL "Le fichier de statistiques est disponible. \n Nom du fichier : %s.pdf\n Pour le récupérer, utiliser la commande : getfile %s.pdf sur le port 4243\n"
+#define STAT_FILE_DL "Le fichier de statistiques est disponible. \nNom du fichier : %s.pdf \nPour le récupérer, utiliser la commande : getfile %s.pdf sur le port 4243\n"
 #define DEFAULT_ROUND 1
 #define NO_CARD 1
 #define WRONG_CARD 2
@@ -98,10 +98,10 @@ typedef struct {
 Game *create_game(PlayerList *pl);
 void free_game(Game* g);
 
-int start_game(Game* g);
-int start_round(Game *g);
+int start_game(Game* g,Player *p);
+int start_round(Game *g, Player *p);
 void end_round(Game *g, int win);
-void end_game(Game *g);
+void end_game(Game *g, Player *p);
 
 void distribute_card(Game *g);
 int play_card(Game *g, Player *p,int card);

@@ -74,7 +74,7 @@ void free_game(Game *g) {
  * @note The function locks and unlocks the read-write mutex to ensure that state changes and
  *       checks on the game's state are done atomically and safely in a multithreaded environment.
  */
-int start_game(Game *g) {
+int start_game(Game *g,Player *p) {
     pthread_rwlock_wrlock(&g->mutex);
     if(get_ready_count(g->playerList) != g->playerList->count || g->state == PLAY_STATE || g->state == GAME_STATE){
         pthread_rwlock_unlock(&g->mutex);
@@ -84,8 +84,9 @@ int start_game(Game *g) {
     g->gameData->player_count = g->playerList->count; // Set the player number
 
     g->state = GAME_STATE;
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"%s a lancé la partie !\n",p->name);
     pthread_rwlock_unlock(&g->mutex);
-    start_round(g);
+    start_round(g,p);
     return 0;
 }
 /**
@@ -106,7 +107,7 @@ int start_game(Game *g) {
  * @note The function locks and unlocks the read-write mutex to ensure that state changes and
  *       checks on the game's state are done atomically and safely in a multithreaded environment.
  */
-int start_round(Game *g){
+int start_round(Game *g,Player *p){
     pthread_rwlock_wrlock(&g->mutex);
     if(get_ready_count(g->playerList) != g->playerList->count || g->state == PLAY_STATE){
         pthread_rwlock_unlock(&g->mutex);
@@ -116,7 +117,7 @@ int start_round(Game *g){
     g->board = calloc((g->playerList->count * g->round),sizeof (int));
     g->state = PLAY_STATE;
 
-    broadcast_message(g->playerList,NULL,B_CONSOLE,"Dénut du round : %d\n",g->round);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"%s a lancé le round (niveau :%d)\n",p->name,g->round);
 
     init_player_card(g->playerList,g->round); // Malloc player's deck
     distribute_card(g);
@@ -160,11 +161,12 @@ void end_round(Game *g, int win){
     }
 
     free_players_card(g->playerList);
-    reset_ready_players(g->playerList);
     free(g->board);
     g->played_cards_count = 0;
     reset_queue(g->cards_queue);
     g->state = GAME_STATE;
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"[%d/ %d] joueur prêt\n",
+                      get_ready_count(g->playerList),g->playerList->count);
 }
 /**
  * @brief Ends the game and resets it to the lobby state.
@@ -182,11 +184,10 @@ void end_round(Game *g, int win){
  * @warning The function destroy associate GameData structure, ensure you have nothing to do with it
  *      after calling this function.
  */
-void end_game(Game *g){
-    send_stats(g); //TODO temporaire pour tester l'intégration des statistiques
+void end_game(Game *g, Player *p){
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"%s a mis fin a la partie, retour au lobby \nGénération des statistiques en cours ...\n",p->name);
+    send_stats(g);
     free_gm(g->gameData); // Destroy GameData
-    broadcast_message(g->playerList,NULL,B_CONSOLE,"Un joueur a mis fin a la partie, retour au lobby\n");
-
     g->round = DEFAULT_ROUND;
     g->state = LOBBY_STATE;
 }

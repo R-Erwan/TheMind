@@ -55,3 +55,23 @@ int ctoint(const char *cmd) {
     // Retourner le résultat de la conversion
     return (int)result;
 }
+
+
+
+int hash_cmd(const char* cmd){
+    if(strcmp(cmd,"ready") == 0 || strcmp(cmd,"r") == 0)
+        return READY;
+    else if (strcmp(cmd,"unready") == 0 || strcmp(cmd,"u") == 0)
+        return UNREADY;
+    else if (strcmp(cmd,"start") == 0 || strcmp(cmd,"sg") == 0)
+        return START;
+    else if (strcmp(cmd,"stop") == 0)
+        return STOP;
+    else if (strcmp(cmd,"add robot") == 0)
+        return ROBOT_ADD;
+    else if (strcmp(cmd,"remove robot") == 0)
+        return ROBOT_REMOVE;
+    else if (strcmp(cmd,"quit") == 0 || strcmp(cmd,"q") == 0)
+        return QUIT;
+    else return CARD;
+}
