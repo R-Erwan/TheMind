@@ -37,7 +37,6 @@ typedef struct{
     Game *game;
 } ListentThreadArgs;
 
-
 volatile int keepalive = 1;
 pthread_cond_t keepalive_cond;
 pthread_mutex_t keepalive_mutex;
@@ -101,7 +100,7 @@ void handle_command(const char* cmd,Game *g,Player *p){
         if(strcmp(cmd,"ready") == 0){
             int res = set_ready_player(g,p,1);
             if(res == 0){
-                start_round(g); //Essaie de lancer la partie
+                start_round(g); //Essaie de lancer le round
             } else if( res == -2){
                 char msg[128];
                 snprintf(msg, sizeof msg, "La partie est déja en cours");
@@ -119,7 +118,7 @@ void handle_command(const char* cmd,Game *g,Player *p){
         int num = ctoint(cmd);
         if(num == -1){
             char msg[128];
-            snprintf(msg, sizeof msg, "Vous n'avez pas envoyé un \n");
+            snprintf(msg, sizeof msg, "Vous n'avez pas envoyé un nombre\n");
             send(p->socket_fd,msg,strlen(msg),0);
         } else {
             int res = play_card(g,p,num);
@@ -129,6 +128,13 @@ void handle_command(const char* cmd,Game *g,Player *p){
                 send(p->socket_fd,msg,strlen(msg),0);
             }
         }
+    }
+}
+
+void handle_command2(const char* cmd, Game *g, Player *p){
+    switch (g->state) {
+        case LOBBY_STATE:
+
     }
 }
 
@@ -189,7 +195,7 @@ void *handle_client(void *arg) {
     send(p->socket_fd,message, strlen(message),0);
 
     // Broadcast new player message to all player.
-    new_player_broadcast(pl,p);
+    broadcast_message(pl,p,B_CONSOLE,"%s a rejoint la partie ! Joueur connecté %d\n",p->name,pl->count);
 
     // Loop on client commands
     char buffer[BUFSIZ];
@@ -210,7 +216,7 @@ void *handle_client(void *arg) {
 
     // Cleanup player. @warning the order is important here.
     close(p->socket_fd);
-    leave_broadcast(pl,p);
+    broadcast_message(pl,p,B_CONSOLE,"%s a quitté! Joueurs connectés: %d\n",p->name,pl->count -1);
     remove_player(pl,p);
 
     // End game if needed.
@@ -505,7 +511,7 @@ int main(int argc, char* argv[]) {
     pthread_cond_wait(&keepalive_cond, &keepalive_mutex);  // wait for the sigint signal
 
     /* Shutdown server and free ressources*/
-    broadcast_message("Le serveur va se fermer, vous allez être déconnecté.\n",pl,NULL,0);
+    broadcast_message(pl,NULL,B_CONSOLE,"Le serveur va se fermer, vous allez être déconnecté.\n");
     free_player_list(pl);
     free_game(g);
     close(listen_fd);

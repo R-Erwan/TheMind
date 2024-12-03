@@ -7,12 +7,12 @@
 
 #include <pthread.h>
 #include <string.h>
+#include <unistd.h>
+#include <malloc.h>
+#include <sys/socket.h>
+#include <stdarg.h>
 
-#define NEWP_BROADCAST "%s a rejoint la partie ! Joueur connecté %d\n"
-#define LEAVEP_BROADCAST "%s a quitté! Joueurs connectés: %d\n"
-#define READYP_BROADCAST "[%d/ %d] joueur prêt\n"
-#define SEND_CARD "Vous avez reçus la carte %d\n"
-
+#define BUFFER_SIZE 1024
 #define B_CONSOLE 1
 
 typedef struct {
@@ -32,6 +32,7 @@ typedef struct {
 
 Player *create_player(PlayerList *players,int socket_fd);
 void free_player(Player *player);
+
 PlayerList* init_pl(int max_players);
 void free_player_list(PlayerList* players);
 
@@ -43,14 +44,11 @@ int update_ready_player(PlayerList *players, Player *p, int state);
 void reset_ready_players(PlayerList *players);
 int set_player_name(PlayerList *players, Player *p, char* name);
 
-int broadcast_message(const char* msg, PlayerList *players, Player *exclude_player, int params);
-void new_player_broadcast(PlayerList *players, Player *p);
-void leave_broadcast(PlayerList *players, Player *p);
-void ready_player_broadcast(PlayerList *players);
-void send_card_message(Player *p, int card);
+int broadcast_message(PlayerList* players, Player* exclude_player, int params, const char* format, ...);
 
 int is_full(PlayerList *playerList);
 int get_ready_count(PlayerList *pl);
+void send_p(Player *player, const char* format, ...);
 
 
 #endif //THEMIND_PLAYERSRESSOURCES_H

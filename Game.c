@@ -116,9 +116,7 @@ int start_round(Game *g){
     g->board = calloc((g->playerList->count * g->round),sizeof (int));
     g->state = PLAY_STATE;
 
-    char msg[128];
-    snprintf(msg,sizeof msg,"Début du round : %d\n",g->round);
-    broadcast_message(msg,g->playerList,NULL,B_CONSOLE);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"Dénut du round : %d\n",g->round);
 
     init_player_card(g->playerList,g->round); // Malloc player's deck
     distribute_card(g);
@@ -147,9 +145,7 @@ int start_round(Game *g){
  */
 void end_round(Game *g, int win){
     if(win){
-        char msg[128];
-        snprintf(msg,sizeof msg,"Bravo vous avez gagné la manche %d\n",g->round);
-        broadcast_message(msg,g->playerList,NULL,B_CONSOLE);
+        broadcast_message(g->playerList,NULL,0,"Bravo vous avez gagné la manche %d\n",g->round);
         add_round(g->gameData,g->round,1); // Add 1 winning round to GameData
 
         //Check if next manche is possible, if there's enough card for every player.
@@ -158,9 +154,7 @@ void end_round(Game *g, int win){
         }
 
     } else {
-        char msg[128];
-        snprintf(msg,sizeof msg,"Manche %d perdu ! BOUHHH\n",g->round);
-        broadcast_message(msg,g->playerList,NULL,B_CONSOLE);
+        broadcast_message(g->playerList,NULL,0,"La manche %d est perdu !\n",g->round);
         add_round(g->gameData,g->round,0); // Add 1 loosing round to GameData
         g->round = DEFAULT_ROUND;
     }
@@ -191,9 +185,8 @@ void end_round(Game *g, int win){
 void end_game(Game *g){
     send_stats(g); //TODO temporaire pour tester l'intégration des statistiques
     free_gm(g->gameData); // Destroy GameData
-    char msg[128];
-    snprintf(msg,sizeof msg,"Un joueur a mis fin a la partie, retour au lobby\n");
-    broadcast_message(msg,g->playerList,NULL,B_CONSOLE);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"Un joueur a mis fin a la partie, retour au lobby\n");
+
     g->round = DEFAULT_ROUND;
     g->state = LOBBY_STATE;
 }
@@ -237,7 +230,7 @@ void distribute_card(Game *g){
         for (int j = 0; j < pl->count; ++j) {
             pl->players[j]->cards[i] = deck[card_index]; // Add card to player deck
             enqueue(g->cards_queue,deck[card_index]); // Add card to game_cards
-            send_card_message(pl->players[j],deck[card_index]); // Send message to player
+            send_p(pl->players[j],"Carte : %d\n",deck[card_index]); // Send message to player.
             card_index++;
         }
     }
@@ -258,15 +251,15 @@ void distribute_card(Game *g){
  *       The final message informs players that they can start playing their cards after the countdown ends.
  */
 void countdown(Game *g,int sleep_delta){
-    broadcast_message(COUNT_DOWN_MSG,g->playerList,NULL,B_CONSOLE);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"La partie vas commencer dans :\n");
     sleep(sleep_delta);
-    broadcast_message("3\n",g->playerList,NULL,B_CONSOLE);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"3\n");
     sleep(sleep_delta);
-    broadcast_message("2\n",g->playerList,NULL,B_CONSOLE);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"2\n");
     sleep(sleep_delta);
-    broadcast_message("1\n",g->playerList,NULL,B_CONSOLE);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"1\n");
     sleep(sleep_delta);
-    broadcast_message(PLAY_CARD_MSG,g->playerList,NULL,0);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"Go !\n");
 }
 /**
  * @brief Handles the action of a player playing a card during the game.
@@ -312,9 +305,7 @@ int play_card(Game *g, Player *p, int card){
         return NO_CARD;
     }
 
-    char msg[128];
-    snprintf(msg,sizeof msg,"%s -> %d\n",p->name,card);
-    broadcast_message(msg,g->playerList,NULL,B_CONSOLE);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"%s -> %d\n",p->name,card);
 
     if(card != peek(g->cards_queue)){
         //Branch when the card loose the round, refused
@@ -362,7 +353,7 @@ int play_card(Game *g, Player *p, int card){
  */
 void broadcast_board(Game *g){
     char* board_msg = format_board(g->board,(g->round*g->playerList->count));
-    broadcast_message(board_msg,g->playerList,NULL,B_CONSOLE);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,board_msg);
     free(board_msg);
 }
 /**
@@ -411,8 +402,7 @@ void send_stats(Game*g){
     } else {
         filename = g->gameData->data_fp;
     }
-    snprintf(msg,sizeof(msg),STAT_FILE_DL,filename,filename);
-    broadcast_message(msg,g->playerList,NULL,B_CONSOLE);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,STAT_FILE_DL,filename,filename);
 
     pthread_rwlock_unlock(&g->mutex);
 }

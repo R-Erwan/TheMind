@@ -2,9 +2,7 @@
 // Created by erwan on 13/11/2024.
 //
 
-#include <unistd.h>
-#include <malloc.h>
-#include <sys/socket.h>
+
 #include "playersRessources.h"
 
 /**
@@ -160,7 +158,7 @@ int update_ready_player(PlayerList *players, Player *p, int state){
     pthread_rwlock_wrlock(&players->mutexRW);
     p->ready = !p->ready;
     pthread_rwlock_unlock(&players->mutexRW);
-    ready_player_broadcast(players);
+    broadcast_message(players,NULL,B_CONSOLE,"[%d/ %d] joueur prêt\n", get_ready_count(players),players->count);
     return 0;
 }
 /**
@@ -198,47 +196,42 @@ int set_player_name(PlayerList *players, Player *p, char* name){
  * @param params 1 to display message in local console.
  * @return 0
  */
-int broadcast_message(const char* msg, PlayerList *players, Player *exclude_player, int params){
+int broadcast_message(PlayerList* players, Player* exclude_player, int params, const char* format, ...) {
+    char buffer[BUFFER_SIZE];
+    va_list args;
+
+    // Formater le message
+    va_start(args, format);
+    int length = vsnprintf(buffer, BUFFER_SIZE, format, args);
+    va_end(args);
+
+    if (length < 0) {
+        perror("Erreur de formatage du message");
+        return -1;
+    }
+
+    // Bloquer en lecture le mutex
     pthread_rwlock_rdlock(&players->mutexRW);
+
+    // Diffuser le message à tous les joueurs, sauf le joueur exclu
     for (int i = 0; i < players->count; ++i) {
-        if(exclude_player == NULL || players->players[i]->id != exclude_player->id){
-            send(players->players[i]->socket_fd, msg, strlen(msg),0);
+        Player* current_player = players->players[i];
+        if (exclude_player == NULL || current_player->id != exclude_player->id) {
+            if (send(current_player->socket_fd, buffer, length, 0) == -1) {
+                perror("Erreur lors de l'envoi du message à un joueur");
+            }
         }
     }
-    if(params == B_CONSOLE){
-        printf("[BROADCAST] : %s",msg);
+
+    // Afficher le message dans la console si le paramètre est défini
+    if (params == B_CONSOLE) {
+        printf("[BROADCAST]: %s\n", buffer);
     }
+
+    // Débloquer le mutex
     pthread_rwlock_unlock(&players->mutexRW);
+
     return 0;
-}
-/**
- * @brief Broadcast message to all player that theres a new player.
- * @param players Pointer to the list of player.
- * @param p Pointer on the new player joining.
- */
-void new_player_broadcast(PlayerList *players, Player *p){
-    char msg[128];
-    snprintf(msg, sizeof msg, NEWP_BROADCAST, p->name, players->count);
-    broadcast_message(msg,players,p,B_CONSOLE);
-}
-/**
- * @brief Broadcast message to all, that a player as quit.
- * @param players Pointer to the list of player.
- * @param p Pointer to the player who quit.
- */
-void leave_broadcast(PlayerList *players, Player *p){
-    char message[128];
-    snprintf(message, sizeof message, LEAVEP_BROADCAST, p->name, players->count - 1);
-    broadcast_message(message,players,NULL,B_CONSOLE);
-}
-/**
- * @brief Broadcast the ratio of ready player.
- * @param players Pointer to the the list of player.
- */
-void ready_player_broadcast(PlayerList *players){
-    char message[128];
-    snprintf(message, sizeof message, READYP_BROADCAST, get_ready_count(players),players->count);
-    broadcast_message(message, players,NULL,B_CONSOLE);
 }
 /**
  * @brief test is the list is full
@@ -319,43 +312,6 @@ void free_players_card(PlayerList *pl){
     pthread_rwlock_unlock(&pl->mutexRW);
 }
 /**
- * @brief Sends a card-related message to the specified player.
- *
- * This function formats a message containing the card value and sends it
- * to the player through their socket. The message is based on the `SEND_CARD`
- * format string, which should include a placeholder for the card value (e.g., `"%d"`).
- *
- * @param p A pointer to the `Player` structure representing the player
- *          to whom the message is sent. The `Player` must have a valid
- *          `socket_fd`.
- * @param card An integer representing the card value to include in the message.
- *
- *
- * @example
- * #define SEND_CARD "You received the card: %d\n"
- * Player p = {.socket_fd = client_socket_fd};
- * send_card_message(&p, 42); // Sends: "You received the card: 42"
- */
-void send_card_message(Player *p, int card) {
-    if (p == NULL || p->socket_fd < 0) {
-        fprintf(stderr, "Error: Invalid player or socket.\n");
-        return;
-    }
-
-    char msg[128];
-    if (snprintf(msg, sizeof msg, SEND_CARD, card) >= sizeof msg) {
-        fprintf(stderr, "Error: Message truncated.\n");
-        return;
-    }
-
-    ssize_t bytes_sent = send(p->socket_fd, msg, strlen(msg), 0);
-    if (bytes_sent == -1) {
-        perror("Error sending card message");
-    } else if (bytes_sent < (ssize_t)strlen(msg)) {
-        fprintf(stderr, "Warning: Partial message sent (%zd of %zu bytes).\n", bytes_sent, strlen(msg));
-    }
-}
-/**
  * @brief Resets the "ready" status of all players in the player list.
  *
  * This function iterates through the list of players and sets their `ready`
@@ -377,10 +333,34 @@ void reset_ready_players(PlayerList *players) {
         }
     }
     pthread_rwlock_unlock(&players->mutexRW);
-    ready_player_broadcast(players);
+    broadcast_message(players,NULL,B_CONSOLE,"[%d/ %d] joueur prêt", get_ready_count(players),players->count);
 }
+/**
+ * @brief Send format message to one player.
+ * @param player Player to send the message on his socket.
+ * @param format Format message.
+ * @param ... Parameters puts in the char format string.
+ */
+void send_p(Player *player, const char* format, ...) {
+    char buffer[BUFFER_SIZE];
+    va_list args;
 
+    // Initialiser la liste des arguments variables
+    va_start(args, format);
 
+    // Générer la chaîne formatée
+    int length = vsnprintf(buffer, BUFFER_SIZE, format, args);
+    // Nettoyer la liste des arguments
+    va_end(args);
 
+    // Vérifier si le message a été correctement formaté
+    if (length < 0) {
+        perror("Erreur de formatage du message");
+        return;
+    }
 
-
+    // Envoyer le message via le socket
+    if (send(player->socket_fd, buffer, length, 0) == -1) {
+        perror("Erreur lors de l'envoi du message");
+    }
+}
