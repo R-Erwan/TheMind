@@ -10,6 +10,8 @@
 
 #endif //TEST_STATMANAGERV2_H
 #define DATA_DIR "../datas"
+#define SCRIPT_DIR "../scripts"
+
 /**
  * @warning Before use this module ensure that the project have the correct file and directory structure,
  *          datas,pdf,ressources, and scripts folders.
@@ -36,3 +38,5 @@ void add_loosing_card(GameData *gm, int card, time_t reaction_time);
 int write_data_to_file(GameData* gm);
 int make_dg(const char* data_fp);
 int make_pdf(const char* data_fp);
+int write_game_rank(GameData* gm, char *p_names[]);
+char **get_top10(int nb_p, int *line_count);

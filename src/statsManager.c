@@ -247,7 +247,97 @@ int make_pdf(const char *data_fp) {
     }
 }
 
+int write_game_rank(GameData* gm, char *p_names[]){
 
+    // Format players name
+    size_t pnt = 1;
+    for (int i = 0; i < gm->player_count; i++) {
+        pnt += strlen(p_names[i]) + 1;
+    }
+
+    char *format_pn = malloc(pnt);
+    if(format_pn == NULL){
+        perror("ERROR : Memory allocation");
+        return -1;
+    }
+
+    format_pn[0] = '\0';
+    for (int i = 0; i < gm->player_count; i++) {
+        strcat(format_pn,p_names[i]);
+        if(i < gm->player_count - 1){
+            strcat(format_pn, " ");
+        }
+    }
+
+    char cmd[BUFSIZ];
+    int ret;
+    snprintf(cmd,sizeof(cmd),"../scripts/add_rank.sh %d %d %s",gm->player_count,gm->max_round_lvl,format_pn);
+    ret = system(cmd);
+
+    free(format_pn);
+
+    if(ret == -1) {
+        perror("Erreur lors de l'éxécution de la commande");
+        return -1;
+    }
+
+    // Vérifier le code de retour du script
+    if (WIFEXITED(ret) && WEXITSTATUS(ret) == 0) {
+        printf("Script exécuté avec succès.\n");
+        return 0;  // Succès
+    } else {
+        printf("Le script a rencontré une erreur. Code de retour : %d\n", WEXITSTATUS(ret));
+        return -1;  // Erreur
+    }
+
+}
+
+char** get_top10(int nb_p, int *line_count) {
+    // Commande à exécuter
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd), "../scripts/top10.sh %d", nb_p);
+
+    // Ouvrir le processus pour lire la sortie du script
+    FILE *fp = popen(cmd, "r");
+    if (fp == NULL) {
+        perror("Erreur lors de l'exécution du script");
+        return NULL;
+    }
+
+    // Stocker chaque ligne dans un tableau dynamique
+    char **lines = NULL;
+    char buffer[256];
+    *line_count = 0;
+
+    while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+        lines = realloc(lines, (*line_count + 1) * sizeof(char*));
+        if (lines == NULL) {
+            perror("Erreur lors du réallouage de mémoire");
+            pclose(fp);
+            return NULL;
+        }
+        buffer[strcspn(buffer, "\n")] = '\0'; // Retirer le '\n'
+        lines[*line_count] = strdup(buffer);
+        if (lines[*line_count] == NULL) {
+            perror("Erreur lors de la duplication de la ligne");
+            pclose(fp);
+            return NULL;
+        }
+        (*line_count)++;
+    }
+
+    // Fermer le flux
+    if (pclose(fp) == -1) {
+        perror("Erreur lors de la fermeture du processus");
+        for (int i = 0; i < *line_count; i++) {
+            free(lines[i]);
+        }
+        free(lines);
+        return NULL;
+    }
+
+    return lines;
+}
 
 
 

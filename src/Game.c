@@ -187,6 +187,19 @@ void end_round(Game *g, int win){
 void end_game(Game *g, Player *p){
     broadcast_message(g->playerList,NULL,B_CONSOLE,"%s a mis fin a la partie, retour au lobby \nGénération des statistiques en cours ...\n",p->name);
     send_stats(g);
+    char *name[] = {"Toto","Tata"};
+    write_game_rank(g->gameData,name);
+    int line;
+    char **result = get_top10(g->playerList->count,&line);
+    if(result){
+        broadcast_message(g->playerList,NULL,0,"Classement :\n");
+        for (int i = 0; i < line; i++) {
+            broadcast_message(g->playerList,NULL,0,"%s\n",result[i]);
+            free(result[i]);
+        }
+        free(result);
+    }
+
     free_gm(g->gameData); // Destroy GameData
     g->round = DEFAULT_ROUND;
     g->state = LOBBY_STATE;

@@ -12,6 +12,7 @@ sudo apt-get install -y cmake gcc gnuplot texlive texlive-latex-extra bash
 # Arborescence
 echo "📁 Création de l'arborescence des fichiers..."
 mkdir -p {datas,pdf}
+touch datas/rank.dat
 
 # Compilation
 if [ -d "$BUILD_DIR" ]; then
