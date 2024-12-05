@@ -7,12 +7,16 @@ echo "Installation de $PROJECT_NAME"
 # Dépendances
 echo "📦 Installation des dépendances..."
 sudo apt-get update
-sudo apt-get install -y cmake gcc gnuplot texlive texlive-latex-extra bash
+sudo apt-get install -y cmake gcc gnuplot texlive texlive-latex-extra texlive-lang-french bash
 
 # Arborescence
 echo "📁 Création de l'arborescence des fichiers..."
 mkdir -p {datas,pdf}
 touch datas/rank.dat
+
+# Droits d'éxécution
+echo "🪪Setup des droits sur les scripts :"
+chmod -R 777 *
 
 # Compilation
 if [ -d "$BUILD_DIR" ]; then
