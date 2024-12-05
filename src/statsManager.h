@@ -3,7 +3,6 @@
 //
 
 #include <bits/types/FILE.h>
-#include "hpdf.h"
 
 #ifndef TEST_STATMANAGERV2_H
 #define TEST_STATMANAGERV2_H
