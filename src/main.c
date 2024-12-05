@@ -64,7 +64,6 @@ void handle_command(const char* cmd, Game *g, Player *p){
             if(g->state == LOBBY_STATE || g->state == GAME_STATE) {
                 if(set_ready_player(g,p,1) == -2)
                     send_p(p,"La partie est déjà en cours\n");
-
         } else send_p(p,"La partie est déjà en cours\n");
             break;
         case UNREADY :
@@ -81,7 +80,7 @@ void handle_command(const char* cmd, Game *g, Player *p){
             } else if(g->state == GAME_STATE){
                 if(start_round(g,p) == -1) // Start round
                     send_p(p,"Tous les joueurs ne sont pas prêt !\n");
-            } else if(g->state == GAME_STATE){
+            } else if(g->state == PLAY_STATE){
                 send_p(p,"Vous êtes au milieu d'une manche !\n");
             }
             break;
@@ -144,11 +143,9 @@ void *handle_client(void *arg) {
     free(args);
 
     char name[50] = {0}; // Buffer for player's name.
-    char message[256] = {0}; // Buffer for inits messages.
 
     // First welcome message, ask for the name.
-    snprintf(message,sizeof message,"Bienvenue sur TheMind ! \nEnvoyé votre nom \n");
-    send(p->socket_fd,message,strlen(message),0);
+    send_p(p,"Bienvenue sur TheMind ! \nEnvoyé votre nom\n");
 
     recv(p->socket_fd,name,sizeof (name) -1, 0);
     if(!set_player_name(pl,p,name)){
@@ -156,8 +153,7 @@ void *handle_client(void *arg) {
     }
 
     // Second welcome message with player's name.
-    snprintf(message, sizeof message, "Bienvenue %s\nIl y a %d joueurs\nEnvoyé 'ready' si vous êtes prêt a commencé !\n", p->name, pl->count);
-    send(p->socket_fd,message, strlen(message),0);
+    send_p(p,"Bienvenue %s\nIl y a %d joueurs\nEnvoyé 'ready' si vous êtes prêt a commencé !\n", p->name, pl->count);
 
     // Broadcast new player message to all player.
     broadcast_message(pl,p,B_CONSOLE,"%s a rejoint la partie ! Joueur connecté %d\n",p->name,pl->count);
@@ -191,9 +187,6 @@ void *handle_client(void *arg) {
     if(game->state == PLAY_STATE){
         end_round(game,0);
         end_game(game,p);
-    }
-    if(game->state == LOBBY_STATE){
-        reset_ready_players(pl);
     }
 
     return NULL;
@@ -283,7 +276,12 @@ void *handle_new_connection(void *LTargs){
     }
     return NULL;
 }
-
+/**
+ * @brief Handle requests for pdf stats file download
+ * @param args Pointer to the listening socket
+ * @return NULL This function does not return a value. It runs in an infinite loop
+ *         until the `keepalive` condition is no longer true.
+ */
 void *handle_downloads(void *args){
     int dl_fd = *(int*)args;
     free(args);
@@ -477,6 +475,7 @@ int main(int argc, char* argv[]) {
     free_player_list(pl);
     free_game(g);
     close(listen_fd);
+    close(download_fd);
 
     printf("Serveur fermé\n");
     return 0;

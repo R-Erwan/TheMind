@@ -187,8 +187,13 @@ void end_round(Game *g, int win){
 void end_game(Game *g, Player *p){
     broadcast_message(g->playerList,NULL,B_CONSOLE,"%s a mis fin a la partie, retour au lobby \nGénération des statistiques en cours ...\n",p->name);
     send_stats(g);
-    char *name[] = {"Toto","Tata"};
-    write_game_rank(g->gameData,name);
+
+    char** names= malloc(g->playerList->count * sizeof(char*));
+    for (int i = 0; i < g->playerList->count; i++) {
+        names[i] = strdup(g->playerList->players[i]->name);
+    }
+
+    write_game_rank(g->gameData,names);
     int line;
     char **result = get_top10(g->playerList->count,&line);
     if(result){
@@ -314,6 +319,7 @@ int play_card(Game *g, Player *p, int card){
             break;
         }
     }
+
     if(!have_card || card == 0){
         pthread_rwlock_unlock(&g->mutex);
         return NO_CARD;
@@ -323,7 +329,6 @@ int play_card(Game *g, Player *p, int card){
 
     if(card != peek(g->cards_queue)){
         //Branch when the card loose the round, refused
-        //TODO AFFICHER LE BOARD COMPLET
         time_t delta_time = time(NULL) - g->startingTime; // Calc delta time with the starting time of the round.
         add_loosing_card(g->gameData,card,delta_time);
 
@@ -398,12 +403,21 @@ int set_ready_player(Game *g, Player *p, int state) {
     pthread_rwlock_unlock(&g->mutex);
     return res;
 }
-
+/**
+ * @brief Call scripts for generating stats file.
+ *
+ * Write the datas of the game in a unique file.
+ * Call diagramme generator script and pdf generator script
+ * Add the partie in the rank file
+ * Call script to get the top10 rank for the number of player in the game.
+ * @param g
+ */
 void send_stats(Game*g){
     if(g->gameData == NULL){
         return;
     }
     pthread_rwlock_wrlock(&g->mutex);
+
     create_uf(g->gameData);
     write_data_to_file(g->gameData);
     make_dg(g->gameData->data_fp);

@@ -36,7 +36,7 @@ void free_player(Player *player);
 PlayerList* init_pl(int max_players);
 void free_player_list(PlayerList* players);
 
-void init_player_card(PlayerList* pl, int nb_cards);
+void init_player_card(PlayerList *pl, int nb_cards);
 void free_players_card(PlayerList *pl);
 
 int remove_player(PlayerList* players, Player *p);

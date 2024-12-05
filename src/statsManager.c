@@ -246,7 +246,14 @@ int make_pdf(const char *data_fp) {
         return -1;  // Erreur
     }
 }
-
+/**
+ * @brief add a game in the rank.dat file
+ * @param gm The game data
+ * @param p_names All the players name in this game
+ *
+ * @warning this function need the script add_rank.sh.
+ * @return 0 if it was succes, -1 if errrors occurs
+ */
 int write_game_rank(GameData* gm, char *p_names[]){
 
     // Format players name
@@ -291,7 +298,13 @@ int write_game_rank(GameData* gm, char *p_names[]){
     }
 
 }
-
+/**
+ * @brief return array with a top10 rank, base on the player count
+ * @param nb_p Number of player.
+ * @param line_count A pointer to an int, used to know how many lines where returns.
+ * @warning The script top10.sh need to be accessible.
+ * @return A string list of game's rank.
+ */
 char** get_top10(int nb_p, int *line_count) {
     // Commande à exécuter
     char cmd[256];

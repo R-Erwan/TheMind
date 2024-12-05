@@ -56,8 +56,6 @@ int ctoint(const char *cmd) {
     return (int)result;
 }
 
-
-
 int hash_cmd(const char* cmd){
     if(strcmp(cmd,"ready") == 0 || strcmp(cmd,"r") == 0)
         return READY;
