@@ -1,0 +1,9 @@
+| The Mind - Règles du jeu |
+============================
+1. Chaque joueur reçoit un certains nombre de carte numérotées de 1 à 99.
+2. Les joueurs doivent poser leurs cartes dans l'ordre croissant.
+3. Aucun joueur ne peut parler pour coordonner les coups.
+4. Si une erreur est commise, la manche est perdue et les joueur recommence au niveau 1.
+5. L'objectif est de compléter le maximum de manches consécutives. A chaque manches réussis, le niveau augmente de 1.
+============================
+Amusez-vous bien !

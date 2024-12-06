@@ -1,0 +1,21 @@
+********** GUIDE D'UTILISATION *********
+Commandes disponibles :
+
+1. ready, r
+   -> Permet de se mettre prêt avant de commencer une partie ou un round.
+
+2. unready, u
+   -> Permet de signaler que vous n'êtes plus prêt.
+
+3. start, sg
+   -> Lance la partie ou un nouveau round.
+
+4. stop
+   -> Met fin à la partie en cours.
+
+5. quit
+   -> Quitte le programme client.
+
+6. [1-99]
+   -> Permet de jouer une carte en indiquant son numéro.
+

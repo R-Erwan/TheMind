@@ -225,7 +225,7 @@ int broadcast_message(PlayerList* players, Player* exclude_player, int params, c
 
     // Afficher le message dans la console si le paramètre est défini
     if (params == B_CONSOLE) {
-        printf("[BROADCAST]: %s\n", buffer);
+        printf("[BROADCAST]: %s", buffer);
     }
 
     // Débloquer le mutex
