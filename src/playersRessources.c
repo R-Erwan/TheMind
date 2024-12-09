@@ -363,4 +363,5 @@ void send_p(Player *player, const char* format, ...) {
     if (send(player->socket_fd, buffer, length, 0) == -1) {
         perror("Erreur lors de l'envoi du message");
     }
+    usleep(500000);
 }

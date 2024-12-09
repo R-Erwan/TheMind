@@ -145,7 +145,8 @@ void *handle_client(void *arg) {
     char name[50] = {0}; // Buffer for player's name.
 
     // First welcome message, ask for the name.
-    send_p(p,"Bienvenue sur TheMind ! \nEnvoyé votre nom\n");
+    send_p(p,"Bienvenue sur TheMind !\n");
+    send_p(p, "Envoyé votre nom\n");
 
     recv(p->socket_fd,name,sizeof (name) -1, 0);
     if(!set_player_name(pl,p,name)){
@@ -153,7 +154,8 @@ void *handle_client(void *arg) {
     }
 
     // Second welcome message with player's name.
-    send_p(p,"Bienvenue %s\nIl y a %d joueurs\nEnvoyé 'ready' si vous êtes prêt a commencé !\n", p->name, pl->count);
+    send_p(p,"Bienvenue %s\nIl y a %d joueurs\n", p->name, pl->count);
+    send_p(p, "Envoyé 'ready' si vous êtes prêt a commencé !\n");
 
     // Broadcast new player message to all player.
     broadcast_message(pl,p,B_CONSOLE,"%s a rejoint la partie ! Joueur connecté %d\n",p->name,pl->count);

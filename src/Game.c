@@ -118,7 +118,7 @@ int start_round(Game *g,Player *p){
     g->state = PLAY_STATE;
 
     broadcast_message(g->playerList,NULL,B_CONSOLE,"%s a lancé le round (niveau :%d)\n",p->name,g->round);
-
+    broadcast_message(g->playerList,NULL,B_CONSOLE, "Distribution des cartes...\n");
     init_player_card(g->playerList,g->round); // Malloc player's deck
     distribute_card(g);
     countdown(g,1); // Countdown broadcast.
@@ -155,6 +155,7 @@ void end_round(Game *g, int win){
         }
 
     } else {
+        broadcast_message(g->playerList,NULL,0,"Mince!\n");
         broadcast_message(g->playerList,NULL,0,"La manche %d est perdu !\n",g->round);
         add_round(g->gameData,g->round,0); // Add 1 loosing round to GameData
         g->round = DEFAULT_ROUND;
@@ -278,7 +279,7 @@ void countdown(Game *g,int sleep_delta){
     sleep(sleep_delta);
     broadcast_message(g->playerList,NULL,B_CONSOLE,"1\n");
     sleep(sleep_delta);
-    broadcast_message(g->playerList,NULL,B_CONSOLE,"Go !\n");
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"Go!\n");
 }
 /**
  * @brief Handles the action of a player playing a card during the game.
