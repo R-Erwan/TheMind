@@ -43,13 +43,33 @@ int create_client_socket(const char *ip, int port) {
     return socketfd;
 }
 
+void sort_cards(int *cards)
+{
+    int i = 0;
+    int tmp;
+    while(i < 49 && cards[i + 1] != 0){
+        if (cards[i] > cards[i + 1]) {
+            tmp = cards[i];
+            cards[i] = cards[i + 1];
+            cards[i + 1] = tmp;
+            i = -1;
+        }
+        i++;
+    }
+}
+
 void *GameHandler(void *args)
 {
     int i = 0;
     char *str;
     robotParams *rp = (robotParams*)args;
-    while(PartieEnCours && i < 5 && rp->cards[i] != 0){
-        sleep(rp->cards[i] /5);
+    int temps = rp->cards[0];
+
+    while(PartieEnCours && i < 50 && rp->cards[i] != 0){
+        if(i > 0) {
+            temps = rp->cards[i] - rp->cards[i-1];
+        }
+        sleep(temps /3);
         if(PartieEnCours){
             str = (char*)malloc(12);
             if (str == NULL) {
@@ -91,7 +111,7 @@ void parse_robot_messages(int socket_fd, char *buffer, int *card_list)
             exit(EXIT_FAILURE);
         }
     } else if(strcmp(buffer, "Distribution des cartes...\0") == 0){
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 50; i++) {
             card_list[i] = 0;
         }
         nb_cards = 0;
@@ -100,6 +120,7 @@ void parse_robot_messages(int socket_fd, char *buffer, int *card_list)
         printf("ici: %d\n", card_list[nb_cards]);
         nb_cards++;
     } else if (strncmp(buffer, "Go", 2) == 0){
+        sort_cards(card_list);
         rp = malloc(sizeof(robotParams)); // Allocation dynamique
         if (rp == NULL) {
             perror("ERROR: Memory allocation failed");
@@ -119,7 +140,7 @@ void parse_robot_messages(int socket_fd, char *buffer, int *card_list)
 
 void *handle_reader(void * args) {
     int socket_fd = *(int*)args;
-    int *card_list = (int *)calloc(5, sizeof(int));
+    int *card_list = (int *)calloc(50, sizeof(int));
 
     char buffer[BUFSIZ];
     while(keepalive){
