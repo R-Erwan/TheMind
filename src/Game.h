@@ -5,6 +5,10 @@
 #ifndef THEMIND_GAME_H
 #define THEMIND_GAME_H
 
+#include <malloc.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdbool.h>
 #include "playersRessources.h"
 #include "utils.h"
 #include "queue.h"
@@ -101,7 +105,7 @@ void free_game(Game* g);
 int start_game(Game* g,Player *p);
 int start_round(Game *g, Player *p);
 void end_round(Game *g, int win);
-void end_game(Game *g, Player *p);
+void end_game(Game *g, Player *p, bool hard_disco);
 
 void distribute_card(Game *g);
 int play_card(Game *g, Player *p,int card);
@@ -110,7 +114,7 @@ void countdown(Game *g, int sleep_delta);
 void broadcast_board(Game *g);
 int set_ready_player(Game *g,Player *p,int state);
 
-void send_stats(Game*g);
+void send_stats(Game*g,Player *p);
 
 
 #endif //THEMIND_GAME_H

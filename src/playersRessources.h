@@ -32,6 +32,7 @@ typedef struct {
 
 Player *create_player(PlayerList *players,int socket_fd);
 void free_player(Player *player);
+void disconnect_allP(PlayerList* pl);
 
 PlayerList* init_pl(int max_players);
 void free_player_list(PlayerList* players);

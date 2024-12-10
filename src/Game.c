@@ -2,9 +2,7 @@
 // Created by erwan on 14/11/2024.
 //
 
-#include <malloc.h>
-#include <unistd.h>
-#include <stdlib.h>
+
 #include "Game.h"
 
 /**
@@ -34,6 +32,7 @@ Game *create_game(PlayerList *pl) {
     pthread_rwlock_init(&game->mutex,NULL);
 
     return game;
+
 }
 /**
  * @brief Frees the memory allocated for a game and its associated resources.
@@ -84,7 +83,7 @@ int start_game(Game *g,Player *p) {
     g->gameData->player_count = g->playerList->count; // Set the player number
 
     g->state = GAME_STATE;
-    broadcast_message(g->playerList,NULL,B_CONSOLE,"%s a lancé la partie !\n",p->name);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"%s a lancé la partie ! (joueurs : %d)\n",p->name,g->playerList->count);
     pthread_rwlock_unlock(&g->mutex);
     start_round(g,p);
     return 0;
@@ -161,7 +160,7 @@ void end_round(Game *g, int win){
     }
 
     free_players_card(g->playerList);
-    free(g->board);
+    free(g->board); g->board = NULL;
     g->played_cards_count = 0;
     reset_queue(g->cards_queue);
     g->state = GAME_STATE;
@@ -184,28 +183,40 @@ void end_round(Game *g, int win){
  * @warning The function destroy associate GameData structure, ensure you have nothing to do with it
  *      after calling this function.
  */
-void end_game(Game *g, Player *p){
-    broadcast_message(g->playerList,NULL,B_CONSOLE,"%s a mis fin a la partie, retour au lobby \nGénération des statistiques en cours ...\n",p->name);
-    send_stats(g);
+void end_game(Game *g, Player* p, bool hard_disco){
+    if(hard_disco){
+        broadcast_message(g->playerList,p,B_CONSOLE,"%s a mis fin a la partie, retour au lobby \nGénération des statistiques en cours ...\n",p->name);
+    } else {
+        broadcast_message(g->playerList,NULL,B_CONSOLE,"%s a mis fin a la partie, retour au lobby \nGénération des statistiques en cours ...\n",p->name);
+        p = NULL;
+    }
 
+    send_stats(g,p);
     char** names= malloc(g->playerList->count * sizeof(char*));
     for (int i = 0; i < g->playerList->count; i++) {
         names[i] = strdup(g->playerList->players[i]->name);
     }
 
     write_game_rank(g->gameData,names);
+
     int line;
     char **result = get_top10(g->playerList->count,&line);
     if(result){
-        broadcast_message(g->playerList,NULL,0,"Classement :\n");
+        broadcast_message(g->playerList,p,0,"Classement :\n");
         for (int i = 0; i < line; i++) {
-            broadcast_message(g->playerList,NULL,0,"%s\n",result[i]);
+            broadcast_message(g->playerList,p,0,"%s\n",result[i]);
             free(result[i]);
         }
         free(result);
     }
 
+    for (int i = 0; i < g->playerList->count; i++) {
+        free(names[i]);
+    }
+    free(names);
+
     free_gm(g->gameData); // Destroy GameData
+    g->gameData = NULL;
     g->round = DEFAULT_ROUND;
     g->state = LOBBY_STATE;
 }
@@ -412,7 +423,7 @@ int set_ready_player(Game *g, Player *p, int state) {
  * Call script to get the top10 rank for the number of player in the game.
  * @param g
  */
-void send_stats(Game*g){
+void send_stats(Game*g,Player *p){
     if(g->gameData == NULL){
         return;
     }
@@ -430,7 +441,7 @@ void send_stats(Game*g){
     } else {
         filename = g->gameData->data_fp;
     }
-    broadcast_message(g->playerList,NULL,B_CONSOLE,STAT_FILE_DL,filename,filename);
+    broadcast_message(g->playerList,p,B_CONSOLE,STAT_FILE_DL,filename,filename);
 
     pthread_rwlock_unlock(&g->mutex);
 }

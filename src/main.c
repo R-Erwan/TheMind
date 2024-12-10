@@ -7,9 +7,11 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <signal.h>
+#include <errno.h>
 #include "playersRessources.h"
 #include "Game.h"
 
+#define MAX_PLAYERS 4
 #define SERVER_FULL_MSG "Le serveur est plein. Veuillez réessayer plus tard.\n"
 #define GAME_STARTED_MSG "Une partie est déja en cours. Veuillez réessayer plus tard.\n"
 #define PDF_DIR "../pdf"
@@ -24,7 +26,6 @@ typedef struct {
     Player *p;
     Game  *game;
 } ClientThreadArgs;
-
 /**
  * @brief Structure containing arguments for a listener connection management thread.
  *
@@ -37,7 +38,7 @@ typedef struct{
     Game *game;
 } ListentThreadArgs;
 
-volatile int keepalive = 1;
+volatile bool keepalive = true;
 pthread_cond_t keepalive_cond;
 pthread_mutex_t keepalive_mutex;
 
@@ -93,7 +94,7 @@ void handle_command(const char* cmd, Game *g, Player *p){
             break;
         case STOP:
             if(g->state == GAME_STATE) {
-                end_game(g,p);
+                end_game(g,p,false);
             } else if (g->state == PLAY_STATE){
                 send_p(p,"Une manche est en cours !\n");
             }
@@ -153,11 +154,10 @@ void *handle_client(void *arg) {
     }
 
     // Second welcome message with player's name.
-    send_p(p,"Bienvenue %s\nIl y a %d joueurs\nEnvoyé 'ready' si vous êtes prêt a commencé !\n", p->name, pl->count);
+    send_p(p,"Bienvenue %s\nIl y a %d joueurs\n", p->name, pl->count);
 
     // Broadcast new player message to all player.
     broadcast_message(pl,p,B_CONSOLE,"%s a rejoint la partie ! Joueur connecté %d\n",p->name,pl->count);
-
     // Loop on client commands
     char buffer[BUFSIZ];
     while(1){
@@ -178,17 +178,17 @@ void *handle_client(void *arg) {
     // Cleanup player. @warning the order is important here.
     close(p->socket_fd);
     broadcast_message(pl,p,B_CONSOLE,"%s a quitté! Joueurs connectés: %d\n",p->name,pl->count -1);
-    remove_player(pl,p);
 
     // End game if needed.
     if(game->state == GAME_STATE ) {
-        end_game(game,p);
+        end_game(game,p,true);
     }
     if(game->state == PLAY_STATE){
         end_round(game,0);
-        end_game(game,p);
+        end_game(game,p,true);
     }
 
+    remove_player(pl,p);
     return NULL;
 }
 /**
@@ -237,12 +237,18 @@ void *handle_new_connection(void *LTargs){
         }
 
         int client_fd = accept(listen_fd, (struct sockaddr*)&client_addr, &client_len);
-
-        if (client_fd == -1) {
-            free(CTargs);
-            perror("ERROR accepting connection");
-            continue;
+        if(client_fd < 0){
+            if (errno == EBADF || errno == EINTR) { // EBADF : socket fermée
+                free(CTargs);
+                printf("[AC] Socket fermée, arrêt du thread.\n");
+                break;
+            } else {
+                free(CTargs);
+                perror("ERROR accepting connection");
+                continue;
+            }
         }
+
 
         if(!is_full(game->playerList)){
             send(client_fd,SERVER_FULL_MSG, strlen(SERVER_FULL_MSG),0);
@@ -292,12 +298,22 @@ void *handle_downloads(void *args){
         socklen_t addr_len = sizeof(client_addr);
         int client_fd = accept(dl_fd, (struct sockaddr *)&client_addr, &addr_len);
         if(dl_fd < 0) {
-            perror("[DL] Error accept");
-            continue;
+            if (errno == EBADF || errno == EINTR) { // EBADF : socket fermée
+                printf("[DL] Socket fermée, arrêt du thread.\n");
+                break;
+            } else {
+                perror("[DL] Error accept");
+                continue;
+            }
         }
 
         char buffer[1024] = {0};
-        read(client_fd,buffer,sizeof(buffer));
+        ssize_t read_size =  read(client_fd,buffer,sizeof(buffer) -1 );
+        if(read_size <= 0){
+            perror("[DL] reading error");
+            close(client_fd);
+            continue;
+        }
         printf("[DL] Requête reçue : %s\n",buffer);
 
         // send file if valide request
@@ -436,7 +452,7 @@ int main(int argc, char* argv[]) {
     int backlog = atoi(argv[2]); // Max connection on waiting queue.
     int listen_fd = create_listening_socket(port,backlog); // Listening socket to handle connection
 
-    PlayerList *pl = init_pl(4); // Create the player list
+    PlayerList *pl = init_pl(MAX_PLAYERS); // Create the player list
     Game *g = create_game(pl); // Create the game management system.
 
     /**
@@ -472,10 +488,18 @@ int main(int argc, char* argv[]) {
 
     /* Shutdown server and free ressources*/
     broadcast_message(pl,NULL,B_CONSOLE,"Le serveur va se fermer, vous allez être déconnecté.\n");
+    disconnect_allP(pl); // Close all clients socket.
+
+    shutdown(listen_fd,SHUT_RDWR);
+    close(listen_fd); // Close listening socket.
+    shutdown(download_fd,SHUT_RDWR);
+    close(download_fd); // Close downloading socket.
+
+    pthread_join(tid,NULL);
+    pthread_join(tid_dl,NULL);
+
     free_player_list(pl);
     free_game(g);
-    close(listen_fd);
-    close(download_fd);
 
     printf("Serveur fermé\n");
     return 0;

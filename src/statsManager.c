@@ -1,5 +1,5 @@
 //
-// Created by erwan on 23/11/2024.
+// Created by Erwan on 23/11/2024.
 //
 
 #include <stdio.h>
@@ -254,7 +254,7 @@ int make_pdf(const char *data_fp) {
  * @warning this function need the script add_rank.sh.
  * @return 0 if it was succes, -1 if errrors occurs
  */
-int write_game_rank(GameData* gm, char *p_names[]){
+int write_game_rank(GameData* gm, char **p_names){
 
     // Format players name
     size_t pnt = 1;

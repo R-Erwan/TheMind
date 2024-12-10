@@ -26,7 +26,7 @@ Player* create_player(PlayerList* players, int socket_fd) {
 
     Player *player = malloc(sizeof(Player));
     player->socket_fd = socket_fd;
-    player->ready = 0;
+    player->ready = 1;
     player->id = players->count;
     player->cards = NULL;
     snprintf(player->name,sizeof(player->name),"Anonyme%d",player->id);
@@ -362,5 +362,14 @@ void send_p(Player *player, const char* format, ...) {
     // Envoyer le message via le socket
     if (send(player->socket_fd, buffer, length, 0) == -1) {
         perror("Erreur lors de l'envoi du message");
+    }
+}
+/**
+ * @brief Close all player's socket.
+ * @param pl The player list.
+ */
+void disconnect_allP(PlayerList *pl) {
+    for (int i = 0; i < pl->count; ++i) {
+        close(pl->players[i]->socket_fd);
     }
 }
