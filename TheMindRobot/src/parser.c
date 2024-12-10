@@ -2,22 +2,13 @@
 // Created by erwan on 05/12/2024.
 //
 
-#include <stdbool.h>
 #include <string.h>
 #include <malloc.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include "utils.h"
-
-#define RED "\033[31m"
-#define RESET "\033[0m"
-#define WHT "\e[0;37m"
-
+#include "parser.h"
 
 ServerMsg parse_stoc(const char* msg){
     ServerMsg sm;
     sm.code = NULL_MSG;
-
 
     if(sscanf(msg,"%49s a lancé le round (niveau :%d)",sm.param1,&sm.param2) == 2){
         sm.code = ROUND_START;

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 PROJECT_NAME="TheMind"
-BUILD_DIR="build"
+BUILD_DIR="build-server"
+ROBOT_BUILD_DIR="build-robot"
 
 echo "Installation de $PROJECT_NAME"
 
@@ -18,7 +19,7 @@ touch datas/rank.dat
 echo "🪪Setup des droits sur les scripts :"
 chmod -R 777 *
 
-# Compilation
+# Compilation Serveur
 if [ -d "$BUILD_DIR" ]; then
   echo "🧹 Nettoyage du répertoire $BUILD_DIR existant..."
   rm -rf "$BUILD_DIR"
@@ -32,6 +33,23 @@ cmake ..
 
 echo "⚙️ Compilation..."
 cmake --build .
+cd ..
+
+# Compilation Robot
+if [ -d  "$ROBOT_BUILD_DIR" ]; then
+  echo "🧹 Nettoyage du répertoire $ROBOT_BUILD_DIR existant..."
+  rm -rf "$ROBOT_BUILD_DIR"
+fi
+echo "📁 Création du répertoire $ROBOT_BUILD_DIR"
+mkdir "$ROBOT_BUILD_DIR"
+cd "$ROBOT_BUILD_DIR"
+
+echo "🔧 Configuration du robot avec CMake..."
+cmake ../TheMindRobot
+echo "⚙️ Compilation du robot..."
+cmake --build .
+
+cd ..
 
 # Verification
 

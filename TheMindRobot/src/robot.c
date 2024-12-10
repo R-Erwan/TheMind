@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <unistd.h>
-#include "utils.h"
+#include "parser.h"
 #include "GameState.h"
 
 #define WAIT_DELTA 4
@@ -189,12 +189,13 @@ void *handle_sender(void * args) {
 }
 
 int main(int argc, char **argv) {
-    if(argc != 3){
-        fprintf(stderr,"Usage : %s <port> <ipv4>\n",argv[0]);
+    if(argc != 4){
+        fprintf(stderr,"Usage : %s <port> <ipv4> <robotName>\n",argv[0]);
         exit(EXIT_FAILURE);
     }
     int port = atoi(argv[1]);
     char *ip = argv[2];
+    char *name = argv[3];
     // Set les variables global.
 
     printf("Tentative de connection avec le serveur %s %d ...\n",ip,port);
@@ -206,7 +207,7 @@ int main(int argc, char **argv) {
     printf("Connection avec le serveur établie !\n");
     gs = create_gameState();
 
-    send(socket_fd,"Robot",5,0);
+    send(socket_fd,name,5,0);
 
 
     // Création des threads
