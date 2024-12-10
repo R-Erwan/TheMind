@@ -13,8 +13,9 @@
 #include "utils.h"
 #include "queue.h"
 #include "statsManager.h"
+#include "ANSI-color-codes.h"
 
-#define STAT_FILE_DL "Le fichier de statistiques est disponible. \nNom du fichier : %s.pdf \nPour le récupérer, utiliser la commande : getfile %s.pdf sur le port 4243\n"
+#define STAT_FILE_DL GRN"\nLe fichier de statistiques est disponible. \nNom du fichier : %s.pdf \nPour le récupérer, utiliser la commande : getfile %s.pdf sur le port 4243\n\n"CRESET
 #define DEFAULT_ROUND 1
 #define NO_CARD 1
 #define WRONG_CARD 2
@@ -115,6 +116,10 @@ void broadcast_board(Game *g);
 int set_ready_player(Game *g,Player *p,int state);
 
 void send_stats(Game*g,Player *p);
+void print_lobbyState(Game* g);
+void print_gameState(Game* g);
+void print_playState(Game* g);
+void print_classement(Game* g, Player* p);
 
 
 #endif //THEMIND_GAME_H

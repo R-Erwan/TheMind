@@ -14,6 +14,7 @@
 #define LOOSE_ROUND 104
 #define CARD 105
 #define GO 106
+#define ENDGAME 107
 
 #define NULL_MSG (-1)
 
@@ -24,5 +25,6 @@ typedef struct {
 } ServerMsg;
 
 ServerMsg parse_stoc(const char* msg);
+void remove_ansi_codes(char *msg);
 
 #endif //THEMINDCLIENT_UTILS_H

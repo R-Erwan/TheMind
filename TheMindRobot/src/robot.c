@@ -77,6 +77,7 @@ void *handle_reader(void * args) {
 
         while (newline){
             *newline = '\0';
+            remove_ansi_codes(start);
             ServerMsg serveur_msg = parse_stoc(start);
             switch (serveur_msg.code) {
                 case GAME_START:
@@ -106,6 +107,10 @@ void *handle_reader(void * args) {
                 case WIN_ROUND:
                     reset(gs);
                     break;
+                case ENDGAME:
+                    keepalive = false;
+                    wake_up_thread();
+                    break;
             }
 
             start = newline + 1;
@@ -118,8 +123,6 @@ void *handle_reader(void * args) {
         } else {
             partial_msg[0] = '\0';
         }
-
-
     }
     keepalive = false;
     close(socket_fd);

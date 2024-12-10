@@ -9,4 +9,5 @@ add_executable(TheMindRobotIA src/robot.c
         src/GameState.c
         src/GameState.h
         src/queue.c
-        src/queue.h)
+        src/queue.h
+        src/ANSI-color-codes.h)

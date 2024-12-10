@@ -13,4 +13,5 @@ add_executable(TheMind src/main.c
         src/utils.c
         src/utils.h
         src/statsManager.c
-        src/statsManager.h)
+        src/statsManager.h
+        src/ANSI-color-codes.h)

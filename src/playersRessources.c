@@ -158,7 +158,6 @@ int update_ready_player(PlayerList *players, Player *p, int state){
     pthread_rwlock_wrlock(&players->mutexRW);
     p->ready = !p->ready;
     pthread_rwlock_unlock(&players->mutexRW);
-    broadcast_message(players,NULL,B_CONSOLE,"[%d/ %d] joueur prêt\n", get_ready_count(players),players->count);
     return 0;
 }
 /**
@@ -225,7 +224,7 @@ int broadcast_message(PlayerList* players, Player* exclude_player, int params, c
 
     // Afficher le message dans la console si le paramètre est défini
     if (params == B_CONSOLE) {
-        printf("[BROADCAST]: %s", buffer);
+        printf("%s", buffer);
     }
 
     // Débloquer le mutex
@@ -310,30 +309,6 @@ void free_players_card(PlayerList *pl){
         }
     }
     pthread_rwlock_unlock(&pl->mutexRW);
-}
-/**
- * @brief Resets the "ready" status of all players in the player list.
- *
- * This function iterates through the list of players and sets their `ready`
- * status to `0`. After resetting, it broadcasts
- * the updated readiness status to all clients.
- *
- * @param players A pointer to the `PlayerList` structure containing the list of players.
- *
- */
-void reset_ready_players(PlayerList *players) {
-    if (players == NULL) {
-        fprintf(stderr, "Error: PlayerList is NULL.\n");
-        return;
-    }
-    pthread_rwlock_wrlock(&players->mutexRW);
-    for (int i = 0; i < players->count; ++i) {
-        if (players->players[i] != NULL) {
-            players->players[i]->ready = 0;
-        }
-    }
-    pthread_rwlock_unlock(&players->mutexRW);
-    broadcast_message(players,NULL,B_CONSOLE,"[%d/ %d] joueur prêt", get_ready_count(players),players->count);
 }
 /**
  * @brief Send format message to one player.

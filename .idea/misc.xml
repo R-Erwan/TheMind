@@ -4,4 +4,12 @@
     <option name="pythonIntegrationState" value="YES" />
   </component>
   <component name="CMakeWorkspace" PROJECT_DIR="$PROJECT_DIR$" />
+  <component name="CidrRootsConfiguration">
+    <excludeRoots>
+      <file path="$PROJECT_DIR$/TheMindRobot/build-robot" />
+      <file path="$PROJECT_DIR$/datas" />
+      <file path="$PROJECT_DIR$/doc" />
+      <file path="$PROJECT_DIR$/pdf" />
+    </excludeRoots>
+  </component>
 </project>

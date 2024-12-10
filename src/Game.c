@@ -83,7 +83,7 @@ int start_game(Game *g,Player *p) {
     g->gameData->player_count = g->playerList->count; // Set the player number
 
     g->state = GAME_STATE;
-    broadcast_message(g->playerList,NULL,B_CONSOLE,"%s a lancé la partie ! (joueurs : %d)\n",p->name,g->playerList->count);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,GRN"\n%s a lancé la partie ! (joueurs : %d)\n\n"CRESET,p->name,g->playerList->count);
     pthread_rwlock_unlock(&g->mutex);
     start_round(g,p);
     return 0;
@@ -116,10 +116,11 @@ int start_round(Game *g,Player *p){
     g->board = calloc((g->playerList->count * g->round),sizeof (int));
     g->state = PLAY_STATE;
 
-    broadcast_message(g->playerList,NULL,B_CONSOLE,"%s a lancé le round (niveau :%d)\n",p->name,g->round);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,GRN"\n%s a lancé le round (niveau :%d)\n\n"CRESET,p->name,g->round);
 
     init_player_card(g->playerList,g->round); // Malloc player's deck
     distribute_card(g);
+    print_playState(g);
     countdown(g,1); // Countdown broadcast.
     g->startingTime = time(NULL); // Init current timer.
     pthread_rwlock_unlock(&g->mutex);
@@ -145,7 +146,7 @@ int start_round(Game *g,Player *p){
  */
 void end_round(Game *g, int win){
     if(win){
-        broadcast_message(g->playerList,NULL,0,"Bravo vous avez gagné la manche %d\n",g->round);
+        broadcast_message(g->playerList,NULL,0,GRN"\nBravo vous avez gagné la manche %d\n\n"CRESET,g->round);
         add_round(g->gameData,g->round,1); // Add 1 winning round to GameData
 
         //Check if next manche is possible, if there's enough card for every player.
@@ -154,7 +155,7 @@ void end_round(Game *g, int win){
         }
 
     } else {
-        broadcast_message(g->playerList,NULL,0,"La manche %d est perdu !\n",g->round);
+        broadcast_message(g->playerList,NULL,0,GRN"\nLa manche %d est perdu !\n\n"CRESET,g->round);
         add_round(g->gameData,g->round,0); // Add 1 loosing round to GameData
         g->round = DEFAULT_ROUND;
     }
@@ -164,8 +165,7 @@ void end_round(Game *g, int win){
     g->played_cards_count = 0;
     reset_queue(g->cards_queue);
     g->state = GAME_STATE;
-    broadcast_message(g->playerList,NULL,B_CONSOLE,"[%d/ %d] joueur prêt\n",
-                      get_ready_count(g->playerList),g->playerList->count);
+    print_gameState(g);
 }
 /**
  * @brief Ends the game and resets it to the lobby state.
@@ -184,10 +184,12 @@ void end_round(Game *g, int win){
  *      after calling this function.
  */
 void end_game(Game *g, Player* p, bool hard_disco){
+    if(g->state == LOBBY_STATE) return;
+    g->state = LOBBY_STATE;
     if(hard_disco){
-        broadcast_message(g->playerList,p,B_CONSOLE,"%s a mis fin a la partie, retour au lobby \nGénération des statistiques en cours ...\n",p->name);
+        broadcast_message(g->playerList,p,B_CONSOLE,GRN"\n%s a mis fin a la partie, retour au lobby\n\n"CRESET,p->name);
     } else {
-        broadcast_message(g->playerList,NULL,B_CONSOLE,"%s a mis fin a la partie, retour au lobby \nGénération des statistiques en cours ...\n",p->name);
+        broadcast_message(g->playerList,NULL,B_CONSOLE,GRN"\n%s a mis fin a la partie, retour au lobby\n\n"CRESET,p->name);
         p = NULL;
     }
 
@@ -199,26 +201,18 @@ void end_game(Game *g, Player* p, bool hard_disco){
 
     write_game_rank(g->gameData,names);
 
-    int line;
-    char **result = get_top10(g->playerList->count,&line);
-    if(result){
-        broadcast_message(g->playerList,p,0,"Classement :\n");
-        for (int i = 0; i < line; i++) {
-            broadcast_message(g->playerList,p,0,"%s\n",result[i]);
-            free(result[i]);
-        }
-        free(result);
-    }
-
     for (int i = 0; i < g->playerList->count; i++) {
         free(names[i]);
     }
     free(names);
 
+    print_classement(g,p); //Envoie le classement
+
     free_gm(g->gameData); // Destroy GameData
     g->gameData = NULL;
     g->round = DEFAULT_ROUND;
-    g->state = LOBBY_STATE;
+
+    broadcast_message(g->playerList,p,0,GRN"\nPrêt pour une nouvelle partie ?\n\n"CRESET);
 }
 /**
  * @brief Distributes cards to the players for the current round.
@@ -260,36 +254,11 @@ void distribute_card(Game *g){
         for (int j = 0; j < pl->count; ++j) {
             pl->players[j]->cards[i] = deck[card_index]; // Add card to player deck
             enqueue(g->cards_queue,deck[card_index]); // Add card to game_cards
-            send_p(pl->players[j],"Carte : %d\n",deck[card_index]); // Send message to player.
+            send_p(pl->players[j],BLK"Carte : %d\n"CRESET,deck[card_index]); // Send message to player.
             card_index++;
         }
     }
     sort_queue(g->cards_queue); // Sort the cards_queue
-}
-/**
- * @brief Performs a countdown for the players before starting the card play phase.
- *
- * This function broadcasts a countdown message to all players, starting from a general message indicating
- * the countdown has begun, followed by the numbers 3, 2, and 1, with a specified delay between each message.
- * After the countdown, a final message is broadcasted to indicate that players can start playing their cards.
- *
- * @param g A pointer to the `Game` object where the countdown will be performed.
- *          This pointer must be valid and non-null.
- * @param sleep_delta The time (in seconds) to wait between each countdown message.
- *
- * @note The function uses `sleep` to introduce a delay between the messages, so the countdown is visible to the players.
- *       The final message informs players that they can start playing their cards after the countdown ends.
- */
-void countdown(Game *g,int sleep_delta){
-    broadcast_message(g->playerList,NULL,B_CONSOLE,"La partie vas commencer dans :\n");
-    sleep(sleep_delta);
-    broadcast_message(g->playerList,NULL,B_CONSOLE,"3\n");
-    sleep(sleep_delta);
-    broadcast_message(g->playerList,NULL,B_CONSOLE,"2\n");
-    sleep(sleep_delta);
-    broadcast_message(g->playerList,NULL,B_CONSOLE,"1\n");
-    sleep(sleep_delta);
-    broadcast_message(g->playerList,NULL,B_CONSOLE,"Go !\n");
 }
 /**
  * @brief Handles the action of a player playing a card during the game.
@@ -336,14 +305,15 @@ int play_card(Game *g, Player *p, int card){
         return NO_CARD;
     }
 
-    broadcast_message(g->playerList,NULL,B_CONSOLE,"%s -> %d\n",p->name,card);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,GRN"\n%s -> %d\n\n"CRESET,p->name,card);
 
     if(card != peek(g->cards_queue)){
         //Branch when the card loose the round, refused
         time_t delta_time = time(NULL) - g->startingTime; // Calc delta time with the starting time of the round.
         add_loosing_card(g->gameData,card,delta_time);
 
-        broadcast_board(g);
+        print_playState(g);
+
         end_round(g,0);
         pthread_rwlock_unlock(&g->mutex); // Cares to unlock mutex AFTER calling loose round
         return WRONG_CARD;
@@ -355,7 +325,9 @@ int play_card(Game *g, Player *p, int card){
 
         g->board[g->played_cards_count] = dequeue(g->cards_queue);
         g->played_cards_count++;
-        broadcast_board(g);
+
+        print_playState(g);
+
         //If all cards played, win the round
         if(isEmpty(g->cards_queue)){
             end_round(g,1);
@@ -365,26 +337,6 @@ int play_card(Game *g, Player *p, int card){
     }
     pthread_rwlock_unlock(&g->mutex);
     return 0;
-}
-/**
- * @brief Broadcasts the current game board to all players.
- *
- * This function formats the current game board into a message and then broadcasts it to all players.
- * The game board is displayed as a visual representation of the current state of the game.
- * After the message is broadcast, the formatted message is freed to prevent memory leaks.
- *
- * @param g A pointer to the `Game` object representing the current game state. This pointer must be valid and non-null.
- *
- * @note The game board is formatted using the `format_board` function, which converts the board data
- * into a human-readable string. The formatted string is then sent to all players through the `broadcast_message` function.
- * Memory used for the formatted message is freed after the broadcast to avoid memory leaks.
- *
- * @see format_board()
- */
-void broadcast_board(Game *g){
-    char* board_msg = format_board(g->board,(g->round*g->playerList->count));
-    broadcast_message(g->playerList,NULL,B_CONSOLE,board_msg);
-    free(board_msg);
 }
 /**
  * @brief Sets the readiness state of a player in the game.
@@ -411,6 +363,11 @@ int set_ready_player(Game *g, Player *p, int state) {
         return -2;
     }
     int res = update_ready_player(g->playerList,p,state);
+    if(g->state == LOBBY_STATE){
+        print_lobbyState(g);
+    } else if(g->state == GAME_STATE){
+        print_gameState(g);
+    }
     pthread_rwlock_unlock(&g->mutex);
     return res;
 }
@@ -444,4 +401,151 @@ void send_stats(Game*g,Player *p){
     broadcast_message(g->playerList,p,B_CONSOLE,STAT_FILE_DL,filename,filename);
 
     pthread_rwlock_unlock(&g->mutex);
+}
+/**
+ * @brief Performs a countdown for the players before starting the card play phase.
+ *
+ * This function broadcasts a countdown message to all players, starting from a general message indicating
+ * the countdown has begun, followed by the numbers 3, 2, and 1, with a specified delay between each message.
+ * After the countdown, a final message is broadcasted to indicate that players can start playing their cards.
+ *
+ * @param g A pointer to the `Game` object where the countdown will be performed.
+ *          This pointer must be valid and non-null.
+ * @param sleep_delta The time (in seconds) to wait between each countdown message.
+ *
+ * @note The function uses `sleep` to introduce a delay between the messages, so the countdown is visible to the players.
+ *       The final message informs players that they can start playing their cards after the countdown ends.
+ */
+
+/*
+ * ------------------------
+ * Broadcast gobal function
+ * ------------------------
+ */
+void countdown(Game *g,int sleep_delta){
+    broadcast_message(g->playerList,NULL,B_CONSOLE,GRN"\nLa partie vas commencer dans : ");
+    sleep(sleep_delta);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"3 ");
+    sleep(sleep_delta);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"2 ");
+    sleep(sleep_delta);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"1 ");
+    sleep(sleep_delta);
+    broadcast_message(g->playerList,NULL,B_CONSOLE,"Go !\n\n"CRESET);
+}
+void print_lobbyState(Game* g){
+    if (g->state != LOBBY_STATE) return;
+    char msg[BUFSIZ] = "";
+    strcat(msg, "------ LOBBY ------\n");
+
+    // Ajout du nombre de joueurs
+    char temp[256]; // Buffer temporaire pour les ajouts
+    snprintf(temp, sizeof(temp), CYN "Nb Joueurs : %d\n" CRESET, g->playerList->count);
+    strcat(msg, temp);
+    // Ajout des joueurs
+    strcat(msg, MAG "Joueurs : ");
+    for (int i = 0; i < g->playerList->count; ++i) {
+        if (g->playerList->players[i]->ready) {
+            snprintf(temp, sizeof(temp), BMAG "%s " CRESET, g->playerList->players[i]->name);
+        } else {
+            snprintf(temp, sizeof(temp), MAG "%s " CRESET, g->playerList->players[i]->name);
+        }
+        strcat(msg, temp);
+    }
+    // Ajout d'un retour à la ligne
+    strcat(msg, "\n");
+    // Ajout du nombre de joueurs prêts
+    snprintf(temp, sizeof(temp), YEL "Nb prêt : [%d/%d]\n" CRESET,
+             get_ready_count(g->playerList), g->playerList->count);
+    strcat(msg, temp);
+    // Ajout de la fin du message
+    strcat(msg, "-------------------\n");
+    // Envoi du message
+    broadcast_message(g->playerList, NULL, B_CONSOLE, msg);
+}
+void print_gameState(Game* g){
+    if (g->state != GAME_STATE) return;
+    char msg[BUFSIZ] = "";
+    strcat(msg, "------ Partie en cours ------\n");
+
+    // Ajout du nombre de joueurs
+    char temp[256]; // Buffer temporaire pour les ajouts
+    //Niveau de la prochaine manche
+    snprintf(temp,sizeof (temp), BLU"Prochaine manche : %d\n"CRESET,g->round);
+    strcat(msg,temp);
+    //Nombre de joueurs
+    snprintf(temp, sizeof(temp), CYN "Nb Joueurs : %d\n" CRESET, g->playerList->count);
+    strcat(msg, temp);
+    // Ajout des joueurs
+    strcat(msg, MAG "Joueurs : ");
+    for (int i = 0; i < g->playerList->count; ++i) {
+        if (g->playerList->players[i]->ready) {
+            snprintf(temp, sizeof(temp), BMAG "%s " CRESET, g->playerList->players[i]->name);
+        } else {
+            snprintf(temp, sizeof(temp), MAG "%s " CRESET, g->playerList->players[i]->name);
+        }
+        strcat(msg, temp);
+    }
+    // Ajout d'un retour à la ligne
+    strcat(msg, "\n");
+    // Ajout du nombre de joueurs prêts
+    snprintf(temp, sizeof(temp), YEL "Nb prêt : [%d/%d]\n" CRESET,
+             get_ready_count(g->playerList), g->playerList->count);
+    strcat(msg, temp);
+    //Statistiques :
+    snprintf(temp,sizeof(temp),RED"Meilleur round : %d\n"CRESET,g->gameData->max_round_lvl);
+    strcat(msg,temp);
+    snprintf(temp,sizeof(temp),RED"Ratio rounds gagné / rounds : %d/%d\n"CRESET,g->gameData->win_rounds,g->gameData->rounds);
+    strcat(msg,temp);
+    // Ajout de la fin du message
+    strcat(msg, "-----------------------------\n");
+    // Envoi du message
+    broadcast_message(g->playerList, NULL, B_CONSOLE, msg);
+}
+void print_playState(Game* g){
+    if (g->state != PLAY_STATE) return;
+
+    for (int i = 0; i < g->playerList->count; ++i) {
+        Player *p = g->playerList->players[i];
+        char msg[BUFSIZ] = "";
+        strcat(msg, "------ Manche en cours ------\n");
+
+        char temp[256]; // Buffer temporaire pour les ajouts
+        snprintf(temp,sizeof (temp), BLU"Manche : %d\n"CRESET,g->round); //Niveau de la manche
+        strcat(msg,temp);
+        snprintf(temp,sizeof(temp),MAG"Cartes : "); //Carte du joueur p
+        strcat(msg,temp);
+        for (int j = 0; j < g->round; ++j) {
+            if(p->cards[j] != 0){
+                snprintf(temp,sizeof(temp),"%d ",p->cards[j]);
+                strcat(msg,temp);
+            }
+        }
+        strcat(msg,"\n"CRESET);
+        char* board_msg = format_board(g->board,(g->round*g->playerList->count));
+        snprintf(temp,sizeof(temp),YEL"Plateau : %s\n"CRESET,board_msg);
+        strcat(msg,temp);
+        free(board_msg);
+        strcat(msg, "------------------------------\n"); //Fin du message
+        send_p(p,msg);
+    }
+
+}
+void print_classement(Game* g, Player* p){
+    int line;
+    char **result = get_top10(g->playerList->count,&line);
+    broadcast_message(g->playerList,p,0,"----------------------------- Classement -----------------------------\n");
+    broadcast_message(g->playerList,p,0,"Rang " CYN"nbJoueurs "MAG"MancheMax "BLU"Joueurs "YEL"Date \n"CRESET);
+    for (int i = 0; i < line; ++i) {
+        char *entry = result[i];
+        char *nbJoueurs = strtok(entry,",");
+        char *mancheMax = strtok(NULL, ",");
+        char *joueurs = strtok(NULL, ",");
+        char *date = strtok(NULL, ",");
+        broadcast_message(g->playerList,p,0,"%-5d " CYN "%-10s " MAG "%-10s " BLU "%-20s " YEL "%-10s\n" CRESET,
+                          i+1,nbJoueurs,mancheMax,joueurs,date);
+        free(result[i]);
+    }
+    free(result);
+    broadcast_message(g->playerList,p,0,"---------------------------------------------------------------------\n");
 }

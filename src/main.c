@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <errno.h>
 #include "playersRessources.h"
+#include "ANSI-color-codes.h"
 #include "Game.h"
 
 #define MAX_PLAYERS 4
@@ -42,6 +43,17 @@ volatile bool keepalive = true;
 pthread_cond_t keepalive_cond;
 pthread_mutex_t keepalive_mutex;
 
+void start_robot(char* robot_name){
+    pid_t pid = fork();
+    if(pid == -1) {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    } else if (pid == 0) {
+        execl("../TheMindRobot/build-robot/TheMindRobotIA","../TheMindRobot/build-robot/TheMindRobotIA","4242","127.0.0.1",robot_name,NULL);
+        perror("execl");
+        exit(EXIT_FAILURE);
+    }
+}
 /**
  * @brief Handles a command sent by a player during the game.
  *
@@ -64,39 +76,50 @@ void handle_command(const char* cmd, Game *g, Player *p){
         case READY :
             if(g->state == LOBBY_STATE || g->state == GAME_STATE) {
                 if(set_ready_player(g,p,1) == -2)
-                    send_p(p,"La partie est déjà en cours\n");
-        } else send_p(p,"La partie est déjà en cours\n");
+                    send_p(p,RED"La partie est déjà en cours\n"CRESET);
+        } else send_p(p,RED"La partie est déjà en cours\n"CRESET);
             break;
         case UNREADY :
             if(g->state == LOBBY_STATE || g->state == GAME_STATE) {
                 if(set_ready_player(g,p,0) == -2)
-                    send_p(p,"La partie est déjà en cours\n");
+                    send_p(p,RED"La partie est déjà en cours\n"CRESET);
 
-            } else send_p(p,"La partie est déjà en cours\n");
+            } else send_p(p,RED"La partie est déjà en cours\n"CRESET);
             break;
         case START:
             if(g->state == LOBBY_STATE) {
                 if (start_game(g,p) == -1) // Start game
-                    send_p(p, "Tous les joueurs ne sont pas prêt !\n");
+                    send_p(p, RED"Tous les joueurs ne sont pas prêt !\n"CRESET);
             } else if(g->state == GAME_STATE){
                 if(start_round(g,p) == -1) // Start round
-                    send_p(p,"Tous les joueurs ne sont pas prêt !\n");
+                    send_p(p,RED"Tous les joueurs ne sont pas prêt !\n"CRESET);
             } else if(g->state == PLAY_STATE){
-                send_p(p,"Vous êtes au milieu d'une manche !\n");
+                send_p(p,RED"Vous êtes au milieu d'une manche !\n"CRESET);
             }
             break;
         case CARD:
             if(g->state == PLAY_STATE && ctoint(cmd) != -1){
                 int card = ctoint(cmd);
                 if(play_card(g,p,card) == NO_CARD)
-                    send_p(p,"Vous n'avez pas la carte %d\n",card);
+                    send_p(p,RED"Vous n'avez pas la carte %d\n"CRESET,card);
             }
             break;
         case STOP:
             if(g->state == GAME_STATE) {
                 end_game(g,p,false);
             } else if (g->state == PLAY_STATE){
-                send_p(p,"Une manche est en cours !\n");
+                send_p(p,RED"Une manche est en cours !\n"CRESET);
+            }
+            break;
+        case ROBOT_ADD:
+            if(g->state == LOBBY_STATE){
+                if(g->playerList->count < g->playerList->max){
+                    start_robot("Robot");
+                } else {
+                    send_p(p,RED"Le lobby est déja plein !\n"CRESET);
+                }
+            } else {
+                send_p(p,RED"Vous ne pouvez ajouter un robot uniquement dans le lobby\n"CRESET);
             }
             break;
         default:
@@ -116,21 +139,6 @@ void handle_command(const char* cmd, Game *g, Player *p){
  *
  * @return Always returns `NULL` when the client thread ends.
  *
- * ### Behavior:
- * 1. **Initialization**:
- *    - Sends a welcome message to the client.
- *    - Receives the client's name and sets it in the player list.
- *    - Broadcasts the new player's arrival to all other players.
- *
- * 2. **Command Loop**:
- *    - Continuously listens for commands from the client using `recv`.
- *    - Processes each command using `handle_command`, which updates the game state.
- *    - Handles errors and ensures the command is correctly terminated.
- *
- * 3. **Cleanup**:
- *    - Closes the client's socket.
- *    - Removes the player from the player list.
- *    - If the game is in progress, ends the game or round as necessary.
  *
  * @note This function frees the memory allocated for the `ClientThreadArgs` structure.
  * @warning This function must be called in a separate thread for each client.
@@ -153,11 +161,9 @@ void *handle_client(void *arg) {
         //TODO Traiter le cas ou le nom du client ne vas pas.
     }
 
-    // Second welcome message with player's name.
-    send_p(p,"Bienvenue %s\nIl y a %d joueurs\n", p->name, pl->count);
+    broadcast_message(pl,NULL,B_CONSOLE,GRN"\n%s a rejoint !\n\n"CRESET,p->name);
+    print_lobbyState(game);
 
-    // Broadcast new player message to all player.
-    broadcast_message(pl,p,B_CONSOLE,"%s a rejoint la partie ! Joueur connecté %d\n",p->name,pl->count);
     // Loop on client commands
     char buffer[BUFSIZ];
     while(1){
@@ -177,7 +183,7 @@ void *handle_client(void *arg) {
 
     // Cleanup player. @warning the order is important here.
     close(p->socket_fd);
-    broadcast_message(pl,p,B_CONSOLE,"%s a quitté! Joueurs connectés: %d\n",p->name,pl->count -1);
+    broadcast_message(pl,p,B_CONSOLE,GRN"\n%s a quitté!\n\n"CRESET,p->name);
 
     // End game if needed.
     if(game->state == GAME_STATE ) {
@@ -189,6 +195,7 @@ void *handle_client(void *arg) {
     }
 
     remove_player(pl,p);
+    print_lobbyState(game);
     return NULL;
 }
 /**
@@ -487,7 +494,7 @@ int main(int argc, char* argv[]) {
     pthread_cond_wait(&keepalive_cond, &keepalive_mutex);  // wait for the sigint signal
 
     /* Shutdown server and free ressources*/
-    broadcast_message(pl,NULL,B_CONSOLE,"Le serveur va se fermer, vous allez être déconnecté.\n");
+    broadcast_message(pl,NULL,B_CONSOLE,RED"\nLe serveur va se fermer, vous allez être déconnecté.\n\n"CRESET);
     disconnect_allP(pl); // Close all clients socket.
 
     shutdown(listen_fd,SHUT_RDWR);

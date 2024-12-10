@@ -8,10 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "utils.h"
-
-#define RED "\033[31m"
-#define RESET "\033[0m"
-#define WHT "\e[0;37m"
+#include "ANSI-color-codes.h"
 
 void print_brain_art() {
     printf("                                                THE MIND CLIENT\n");
@@ -29,7 +26,7 @@ void print_brain_art() {
     printf(RED"                                         (((@@@@@@((((((((@@@((@@@@@((@@@@@@(@@@                                \n");
     printf(WHT"                                            (@@@@@@@@@@(@@@@@@@(@@@@@@/#@@@@@@@                                 \n");
     printf(RED"                                                @@@@#     @@@@@@//(((//((((                                     \n");
-    printf(WHT"                                                             ((//((((//(((                                      \n"RESET);
+    printf(WHT"                                                             ((//((((//(((                                      \n"CRESET);
     printf("=============================================================================================================== \n");
 }
 
@@ -51,7 +48,7 @@ void print_file(const char *filename) {
     fclose(file);  // Fermer le fichier
 }
 int parse_stoc(const char* msg){
-    const char* start_phrase = "Le fichier de statistiques est disponible.";
+    const char* start_phrase = GRN"\nLe fichier de statistiques est disponible.";
     if (strncmp(msg, start_phrase, strlen(start_phrase)) == 0) {
         return PDF_FILE_MESSAGE;
     }

@@ -65,11 +65,13 @@ int hash_cmd(const char* cmd){
         return START;
     else if (strcmp(cmd,"stop") == 0)
         return STOP;
-    else if (strcmp(cmd,"add robot") == 0)
+    else if (strcmp(cmd,"addrobot") == 0 || strcmp(cmd,"add robot") == 0)
         return ROBOT_ADD;
-    else if (strcmp(cmd,"remove robot") == 0)
+    else if (strcmp(cmd,"remove robot") == 0 || strcmp(cmd,"removerobot") == 0)
         return ROBOT_REMOVE;
     else if (strcmp(cmd,"quit") == 0 || strcmp(cmd,"q") == 0)
         return QUIT;
-    else return CARD;
+    else if (ctoint(cmd) != -1)
+        return CARD;
+    else return -1;
 }

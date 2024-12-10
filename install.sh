@@ -1,4 +1,5 @@
-#!/usr/bin/env bash
+#!/bin/bash
+
 PROJECT_NAME="TheMind"
 BUILD_DIR="build-server"
 ROBOT_BUILD_DIR="build-robot"
@@ -8,7 +9,7 @@ echo "Installation de $PROJECT_NAME"
 # Dépendances
 echo "📦 Installation des dépendances..."
 sudo apt-get update
-sudo apt-get install -y cmake gcc gnuplot texlive texlive-latex-extra texlive-lang-french bash
+sudo apt-get install -y cmake gcc gnuplot texlive texlive-latex-extra texlive-lang-french
 
 # Arborescence
 echo "📁 Création de l'arborescence des fichiers..."
