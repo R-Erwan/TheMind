@@ -33,71 +33,15 @@
  * It also contains a read-write lock to ensure thread-safe access to the game state.
  */
 typedef struct {
-    /**
-     * @brief The current round of the game.
-     *
-     * This field represents the current round number in the game. The round is incremented after each completed round.
-     */
-    int round;
-
-    /**
-     * @brief A pointer to the list of players participating in the game.
-     *
-     * This field holds a pointer to a `PlayerList` structure, which manages the players, their cards, and readiness status.
-     */
-    PlayerList *playerList;
-
-    /**
-     * @brief The game board, representing the cards played during the game.
-     *
-     * This is an array that stores the cards that have been played so far in the current round. The size of the board is
-     * determined by the number of rounds and players.
-     */
-    int *board;
-
-    /**
-     * @brief The number of cards that have been played in the current round.
-     *
-     * This field tracks the total number of cards played so far in the current round.
-     */
-    int played_cards_count;
-
-    /**
-     * @brief A pointer to the queue of cards that are available to be played in the game.
-     *
-     * This queue holds the remaining cards in the game, and it is used to track which cards are yet to be played.
-     */
-    Queue *cards_queue;
-
-    /**
-     * @brief The current state of the game.
-     *
-     * This field represents the current state of the game, such as whether it is in the lobby, in play, or finished.
-     * It is an integer that corresponds to various predefined game states.
-     */
-    int state;
-
-    /**
-     * @brief Structure to hold alls datas about the game.
-     *
-     * @see statsManager.h
-     */
-    GameData *gameData;
-
-    /**
-     * @brief Start timer of current round.
-     *
-     * This timer is used to calculate the delta time for each played card.
-     */
-    time_t startingTime;
-
-    /**
-     * @brief A read-write lock used to ensure thread-safe access to the game state.
-     *
-     * This lock is used to synchronize access to the game data, ensuring that multiple threads can safely read or
-     * modify the game state without conflicts.
-     */
-    pthread_rwlock_t mutex;
+    int round; // Level of the actual round
+    PlayerList *playerList; // List of Players
+    int *board; // Int array, representing the cards played
+    int played_cards_count; // Number of played card
+    Queue *cards_queue; // Queue of the card to be played, sorted
+    int state; // Actual state of the game (GAME,LOBBY or PLAY)
+    GameData *gameData; // Structure to hold and generate stats
+    time_t startingTime; // Timer representing le beginning of the round
+    pthread_rwlock_t mutex; // Mutex to ensure reading et writting acces
 } Game;
 
 Game *create_game(PlayerList *pl);
@@ -111,11 +55,12 @@ void end_game(Game *g, Player *p, bool hard_disco);
 void distribute_card(Game *g);
 int play_card(Game *g, Player *p,int card);
 
-void countdown(Game *g, int sleep_delta);
-void broadcast_board(Game *g);
 int set_ready_player(Game *g,Player *p,int state);
 
 void send_stats(Game*g,Player *p);
+
+void countdown(Game *g, int sleep_delta);
+
 void print_lobbyState(Game* g);
 void print_gameState(Game* g);
 void print_playState(Game* g);

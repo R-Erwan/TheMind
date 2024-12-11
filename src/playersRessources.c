@@ -5,13 +5,15 @@
 
 #include "playersRessources.h"
 
+
+/*
+ * Creation and frees function on PLAYER
+ */
+
 /**
  * @brief Creates a new player and adds them to the player list.
  *
- * This function checks if the player list has reached its maximum capacity
- * or if the player's name is too long. If conditions are met, it allocates
- * a new player, and point the array player to the player, initializes the player with a default name and
- * socket descriptor, and adds them to the list.
+ * Checks if the player list has reached its maximum capacity
  *
  * @param players Pointer to the player list.
  * @param socket_fd Socket descriptor of the player.
@@ -20,7 +22,7 @@
  */
 Player* create_player(PlayerList* players, int socket_fd) {
     if (players->count >= players->max) {
-        return NULL;  // Limite de joueurs atteinte ou nom trop long
+        return NULL;  // Limite de joueurs atteinte
     }
     pthread_rwlock_wrlock(&players->mutexRW);
 
@@ -40,8 +42,6 @@ Player* create_player(PlayerList* players, int socket_fd) {
 /**
  * @brief Frees all dynamically allocated resources for a player and deletes the player structure.
  *
- * This function first frees the player's card array if it was allocated,
- * and then frees the memory associated with the `Player` structure itself.
  * It also ensures that pointers are set to `NULL` after being freed to avoid accidental use.
  *
  * @param player A pointer to the `Player` structure to be freed.
@@ -104,6 +104,63 @@ void free_player_list(PlayerList* players){
         free(players->players);
         free(players);
     }
+}
+/**
+ * @brief Close all player's socket.
+ * @param pl The player list.
+ */
+void disconnect_allP(PlayerList *pl) {
+    for (int i = 0; i < pl->count; ++i) {
+        close(pl->players[i]->socket_fd);
+    }
+}
+/**
+ * @brief Initializes the cards array for all players in the PlayerList.
+ *
+ * This function allocates memory for the `cards` array of each player in the
+ * `PlayerList`. The size of the `cards` array is determined by the `nb_cards`
+ * parameter.
+
+ * @param pl A pointer to the `PlayerList` structure containing the players.
+ * @param nb_cards The number of cards to allocate for each player. Each
+ *                 player's `cards` array will be of size `nb_cards` and
+ *                 zero-initialized.
+ *
+ * @note If a player's `cards` array was already allocated, this function does
+ *       not free the previous allocation, potentially leading to a memory leak.
+ *       Ensure proper memory management before calling this function.
+ */
+void init_player_card(PlayerList *pl, int nb_cards) {
+    pthread_rwlock_wrlock(&pl->mutexRW);
+    for (int i = 0; i < pl->count; ++i) {
+        pl->players[i]->cards = calloc(nb_cards,sizeof (int));
+    }
+    pthread_rwlock_unlock(&pl->mutexRW);
+}
+/**
+ * @brief Frees the memory allocated for the `cards` array of all players in the PlayerList.
+ *
+ * This function iterates through the `PlayerList` and releases the memory allocated
+ * for each player's `cards` array.
+ *
+ * @param pl A pointer to the `PlayerList` structure containing the players..
+ *
+ * @note After calling this function, the `cards` pointer of each player will be set
+ *       to `NULL` to prevent dangling pointers.
+ */
+void free_players_card(PlayerList *pl){
+    if (pl == NULL) {
+        fprintf(stderr, "Error: PlayerList is NULL\n");
+        return;
+    }
+    pthread_rwlock_wrlock(&pl->mutexRW);
+    for (int i = 0; i < pl->count; ++i) {
+        if (pl->players[i] != NULL && pl->players[i]->cards != NULL) {
+            free(pl->players[i]->cards);
+            pl->players[i]->cards = NULL;
+        }
+    }
+    pthread_rwlock_unlock(&pl->mutexRW);
 }
 /**
  * @brief Removes a specific player from the player list.
@@ -196,12 +253,12 @@ int set_player_name(PlayerList *players, Player *p, char* name){
  * @return 0
  */
 int broadcast_message(PlayerList* players, Player* exclude_player, int params, const char* format, ...) {
-    char buffer[BUFFER_SIZE];
+    char buffer[BUFSIZ];
     va_list args;
 
     // Formater le message
     va_start(args, format);
-    int length = vsnprintf(buffer, BUFFER_SIZE, format, args);
+    int length = vsnprintf(buffer, BUFSIZ, format, args);
     va_end(args);
 
     if (length < 0) {
@@ -233,6 +290,35 @@ int broadcast_message(PlayerList* players, Player* exclude_player, int params, c
     return 0;
 }
 /**
+ * @brief Send format message to one player.
+ * @param player Player to send the message on his socket.
+ * @param format Format message.
+ * @param ... Parameters puts in the char format string.
+ */
+void send_p(Player *player, const char* format, ...) {
+    char buffer[BUFSIZ];
+    va_list args;
+
+    // Initialiser la liste des arguments variables
+    va_start(args, format);
+
+    // Générer la chaîne formatée
+    int length = vsnprintf(buffer, BUFSIZ, format, args);
+    // Nettoyer la liste des arguments
+    va_end(args);
+
+    // Vérifier si le message a été correctement formaté
+    if (length < 0) {
+        perror("Erreur de formatage du message");
+        return;
+    }
+
+    // Envoyer le message via le socket
+    if (send(player->socket_fd, buffer, length, 0) == -1) {
+        perror("Erreur lors de l'envoi du message");
+    }
+}
+/**
  * @brief test is the list is full
  * @param playerList Pointer to the player list
  * @return 1 if the list is full, 0 if theres is still place
@@ -261,90 +347,4 @@ int get_ready_count(PlayerList *pl){
     pthread_rwlock_unlock(&pl->mutexRW);
 
     return count;
-}
-/**
- * @brief Initializes the cards array for all players in the PlayerList.
- *
- * This function allocates memory for the `cards` array of each player in the
- * `PlayerList`. The size of the `cards` array is determined by the `nb_cards`
- * parameter.
-
- * @param pl A pointer to the `PlayerList` structure containing the players.
- * @param nb_cards The number of cards to allocate for each player. Each
- *                 player's `cards` array will be of size `nb_cards` and
- *                 zero-initialized.
- *
- * @note If a player's `cards` array was already allocated, this function does
- *       not free the previous allocation, potentially leading to a memory leak.
- *       Ensure proper memory management before calling this function.
- */
-void init_player_card(PlayerList *pl, int nb_cards) {
-    pthread_rwlock_wrlock(&pl->mutexRW);
-    for (int i = 0; i < pl->count; ++i) {
-        pl->players[i]->cards = calloc(nb_cards,sizeof (int));
-    }
-    pthread_rwlock_unlock(&pl->mutexRW);
-}
-/**
- * @brief Frees the memory allocated for the `cards` array of all players in the PlayerList.
- *
- * This function iterates through the `PlayerList` and releases the memory allocated
- * for each player's `cards` array.
- *
- * @param pl A pointer to the `PlayerList` structure containing the players..
- *
- * @note After calling this function, the `cards` pointer of each player will be set
- *       to `NULL` to prevent dangling pointers.
- */
-void free_players_card(PlayerList *pl){
-    if (pl == NULL) {
-        fprintf(stderr, "Error: PlayerList is NULL\n");
-        return;
-    }
-    pthread_rwlock_wrlock(&pl->mutexRW);
-    for (int i = 0; i < pl->count; ++i) {
-        if (pl->players[i] != NULL && pl->players[i]->cards != NULL) {
-            free(pl->players[i]->cards);
-            pl->players[i]->cards = NULL;
-        }
-    }
-    pthread_rwlock_unlock(&pl->mutexRW);
-}
-/**
- * @brief Send format message to one player.
- * @param player Player to send the message on his socket.
- * @param format Format message.
- * @param ... Parameters puts in the char format string.
- */
-void send_p(Player *player, const char* format, ...) {
-    char buffer[BUFFER_SIZE];
-    va_list args;
-
-    // Initialiser la liste des arguments variables
-    va_start(args, format);
-
-    // Générer la chaîne formatée
-    int length = vsnprintf(buffer, BUFFER_SIZE, format, args);
-    // Nettoyer la liste des arguments
-    va_end(args);
-
-    // Vérifier si le message a été correctement formaté
-    if (length < 0) {
-        perror("Erreur de formatage du message");
-        return;
-    }
-
-    // Envoyer le message via le socket
-    if (send(player->socket_fd, buffer, length, 0) == -1) {
-        perror("Erreur lors de l'envoi du message");
-    }
-}
-/**
- * @brief Close all player's socket.
- * @param pl The player list.
- */
-void disconnect_allP(PlayerList *pl) {
-    for (int i = 0; i < pl->count; ++i) {
-        close(pl->players[i]->socket_fd);
-    }
 }

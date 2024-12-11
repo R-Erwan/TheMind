@@ -43,6 +43,10 @@ volatile bool keepalive = true;
 pthread_cond_t keepalive_cond;
 pthread_mutex_t keepalive_mutex;
 
+/**
+ * @brief Start robot program, the robot quit after the end of the game.
+ * @param robot_name Robot's name.
+ */
 void start_robot(char* robot_name){
     pid_t pid = fork();
     if(pid == -1) {
@@ -55,19 +59,12 @@ void start_robot(char* robot_name){
     }
 }
 /**
- * @brief Handles a command sent by a player during the game.
- *
- * This function processes a command sent by a player and updates the game
- * state or player's status accordingly. It supports various commands based
- * on the current game state, including setting readiness or playing a card.
+ * @brief Handles a command sent by a player.
  *
  * @param cmd The command string received from the player.
- *            Possible values include "ready", "unready", or a card number.
  * @param g Pointer to the game structure.
- *          Contains the current game state and manages all players.
  * @param p Pointer to the player structure.
  *          Represents the player who sent the command.
- *
  * @note The function sends feedback messages to the player's socket for errors
  *       or invalid commands.
  */
@@ -139,7 +136,6 @@ void handle_command(const char* cmd, Game *g, Player *p){
  *
  * @return Always returns `NULL` when the client thread ends.
  *
- *
  * @note This function frees the memory allocated for the `ClientThreadArgs` structure.
  * @warning This function must be called in a separate thread for each client.
  */
@@ -157,9 +153,7 @@ void *handle_client(void *arg) {
     send_p(p,"Bienvenue sur TheMind ! \nEnvoyé votre nom\n");
 
     recv(p->socket_fd,name,sizeof (name) -1, 0);
-    if(!set_player_name(pl,p,name)){
-        //TODO Traiter le cas ou le nom du client ne vas pas.
-    }
+    set_player_name(pl,p,name);
 
     broadcast_message(pl,NULL,B_CONSOLE,GRN"\n%s a rejoint !\n\n"CRESET,p->name);
     print_lobbyState(game);
@@ -178,7 +172,6 @@ void *handle_client(void *arg) {
 
         // Call the command handler
         handle_command(buffer,game,p);
-
     }
 
     // Cleanup player. @warning the order is important here.
@@ -206,9 +199,6 @@ void *handle_client(void *arg) {
  * for each accepted client to handle their interactions. It ensures that
  * the server does not exceed the maximum number of players, and it sends
  * appropriate messages if the server is full or if the game has already started.
- *
- * The function runs in a loop, continuously accepting new client connections
- * and delegating the handling of each client to a separate thread.
  *
  * @param LTargs A pointer to a structure containing the listening socket file descriptor
  *               and the current game state. The structure is expected to be of type
@@ -275,6 +265,13 @@ void *handle_new_connection(void *LTargs){
 
         CTargs->game = game;
         CTargs->p = create_player(game->playerList,client_fd);
+        if(CTargs->p == NULL){
+            send(client_fd,SERVER_FULL_MSG, strlen(SERVER_FULL_MSG),0);
+            close(client_fd);
+            free(CTargs);
+            printf("A client tried to connect, but the server is full.\n");
+            continue;
+        }
 
         pthread_t thread_id;
         if (pthread_create(&thread_id,NULL,handle_client,CTargs) != 0){

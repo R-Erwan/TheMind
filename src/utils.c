@@ -2,6 +2,7 @@
 // Created by erwan on 15/11/2024.
 //
 #include "utils.h"
+
 char* format_board(int* board, int size) {
     if (board == NULL || size <= 0) {
         return NULL;

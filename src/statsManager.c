@@ -44,7 +44,6 @@ void free_gm(GameData *gm) {
         free(gm);
     }
 }
-
 /**
  * @brief Create FILE to store datas.
  * @param gm The Game Data struct associate.
@@ -73,7 +72,6 @@ char *create_uf(GameData *gm) {
     strncpy(gm->data_fp,path,sizeof(path));
     return gm->data_fp;
 }
-
 /**
  * @brief Adds a card play to the GameData structure and updates the reaction time for the card.
  *
