@@ -53,7 +53,7 @@ void start_robot(char* robot_name){
         perror("fork");
         exit(EXIT_FAILURE);
     } else if (pid == 0) {
-        execl("../TheMindRobot/build-robot/TheMindRobotIA","../TheMindRobot/build-robot/TheMindRobotIA","4242","127.0.0.1",robot_name,NULL);
+        execl("../build-robot/TheMindRobotIA","../build-robot/TheMindRobotIA","4242","127.0.0.1",robot_name,NULL);
         perror("execl");
         exit(EXIT_FAILURE);
     }
