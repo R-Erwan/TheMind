@@ -348,11 +348,6 @@ void send_stats(Game*g,Player *p){
 
     pthread_rwlock_unlock(&g->mutex);
 }
-/*
-* ------------------------
- * Broadcast gobal function
- * ------------------------
- */
 /**
  * @brief Performs a countdown for the players before starting the card play phase.
  *

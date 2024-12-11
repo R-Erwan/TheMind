@@ -16,12 +16,9 @@
 #define SERVER_FULL_MSG "Le serveur est plein. Veuillez réessayer plus tard.\n"
 #define GAME_STARTED_MSG "Une partie est déja en cours. Veuillez réessayer plus tard.\n"
 #define PDF_DIR "../pdf"
+#define ROBOTIA_dir "../TheMindRobot/build-robot/TheMindRobotIA"
 /**
  * @brief Structure containing arguments for a player management thread.
- *
- * This structure is used to pass the necessary information to a thread
- * responsible for managing a player.
- * It includes a pointer to the player and a reference to the current game.
  */
 typedef struct {
     Player *p;
@@ -29,19 +26,16 @@ typedef struct {
 } ClientThreadArgs;
 /**
  * @brief Structure containing arguments for a listener connection management thread.
- *
- * This structure is used to pass the necessary information to a thread
- * responsible for accepting new connection
- * It includes a pointer to the listening TCP socket and a reference to the current game.
  */
 typedef struct{
     int listen_fd;
     Game *game;
 } ListentThreadArgs;
 
-volatile bool keepalive = true;
+volatile bool keepalive = true; // Boolean for managing listening et downloading thread.
 pthread_cond_t keepalive_cond;
 pthread_mutex_t keepalive_mutex;
+int s_port; // Global variable listening port
 
 /**
  * @brief Start robot program, the robot quit after the end of the game.
@@ -53,7 +47,7 @@ void start_robot(char* robot_name){
         perror("fork");
         exit(EXIT_FAILURE);
     } else if (pid == 0) {
-        execl("../TheMindRobot/build-robot/TheMindRobotIA","../TheMindRobot/build-robot/TheMindRobotIA","4242","127.0.0.1",robot_name,NULL);
+        execl(ROBOTIA_dir,ROBOTIA_dir,s_port,"127.0.0.1",robot_name,NULL);
         perror("execl");
         exit(EXIT_FAILURE);
     }
@@ -63,10 +57,7 @@ void start_robot(char* robot_name){
  *
  * @param cmd The command string received from the player.
  * @param g Pointer to the game structure.
- * @param p Pointer to the player structure.
- *          Represents the player who sent the command.
- * @note The function sends feedback messages to the player's socket for errors
- *       or invalid commands.
+ * @param p Pointer to the player who send the command.
  */
 void handle_command(const char* cmd, Game *g, Player *p){
     switch (hash_cmd(cmd)) {
@@ -111,7 +102,9 @@ void handle_command(const char* cmd, Game *g, Player *p){
         case ROBOT_ADD:
             if(g->state == LOBBY_STATE){
                 if(g->playerList->count < g->playerList->max){
-                    start_robot("Robot");
+                    char name[50];
+                    snprintf(name, sizeof(name),"Robot%d",g->playerList->count);
+                    start_robot(name);
                 } else {
                     send_p(p,RED"Le lobby est déja plein !\n"CRESET);
                 }
@@ -130,12 +123,8 @@ void handle_command(const char* cmd, Game *g, Player *p){
  * initializing the player, handling commands, broadcasting messages to other
  * players, and cleaning up when the client disconnects.
  *
- * @param arg A pointer to a `ClientThreadArgs` structure containing:
- *            - The player (`Player *p`) being managed.
- *            - The game instance (`Game *game`) the player is participating in.
- *
+ * @param arg A pointer to a `ClientThreadArgs` structure.
  * @return Always returns `NULL` when the client thread ends.
- *
  * @note This function frees the memory allocated for the `ClientThreadArgs` structure.
  * @warning This function must be called in a separate thread for each client.
  */
@@ -195,24 +184,13 @@ void *handle_client(void *arg) {
  * @brief Handles a new client connection and manages the client thread creation.
  *
  * This function listens for incoming client connections on the specified
- * listening socket, accepts the connections, and creates a new thread
- * for each accepted client to handle their interactions. It ensures that
- * the server does not exceed the maximum number of players, and it sends
- * appropriate messages if the server is full or if the game has already started.
+ * listening socket, accepts the connections, and creates a new thread.
  *
- * @param LTargs A pointer to a structure containing the listening socket file descriptor
- *               and the current game state. The structure is expected to be of type
- *               `ListentThreadArgs`, which includes:
- *               - `game`: A pointer to the current game instance.
- *               - `listen_fd`: The file descriptor for the listening socket.
- *
+ * @param LTargs A pointer to a `ListentThreadArgs` structure.
  * @return NULL This function does not return a value. It runs in an infinite loop
  *         until the `keepalive` condition is no longer true.
- *
  * @note The function dynamically allocates memory for `ClientThreadArgs`
  *       for each accepted client. This memory is freed after the client thread is created.
- *       If the game is already in progress or the server is full, a message is sent
- *       to the client and the connection is closed without creating a thread.
  */
 void *handle_new_connection(void *LTargs){
     ListentThreadArgs *arg_in = (ListentThreadArgs *)LTargs;
@@ -348,21 +326,8 @@ void *handle_downloads(void *args){
 }
 /**
  * @brief Handles the SIGINT (interrupt) signal by stopping the server.
- *
- * This function is designed to handle the SIGINT signal (typically triggered by
- * pressing Ctrl+C in the terminal). When the signal is received, it sets the
- * global `keepalive` variable to 0, effectively signaling the server to stop.
- * Additionally, it signals a condition variable `keepalive_cond` to notify any
- * waiting threads to proceed and handle the termination process.
- *
- * @param sig The signal number (in this case, SIGINT). This parameter is
- *            provided by the signal handler system, but is not used directly
- *            in this function.
- *
  * @note The global variable `keepalive` is checked by main thread in
- *       the application to determine when to terminate. The `keepalive_cond`
- *       condition variable is used to synchronize this termination process
- *       with main thread.
+ *       the application to determine when to terminate.
  */
 void handle_sigint(int sig) {
     keepalive = 0;
@@ -371,20 +336,14 @@ void handle_sigint(int sig) {
 /**
  * @brief Creates and binds a listening socket for the server.
  *
- * This function creates a socket that will be used to listen for incoming
- * client connections on the specified port. It sets the socket option to
- * allow address reuse and binds the socket to the provided port. Finally,
- * it listens for incoming connections with the specified backlog size.
  *
  * @param port The port number to bind the server socket to.
  * @param backlog The maximum number of pending connections allowed in the
  *                socket's listen queue.
  *
  * @return The file descriptor of the listening socket.
- *
  * @note This function will exit the program with a failure status if any
- *       error occurs during socket creation, option setting, binding, or
- *       listening.
+ *       error occurs.
  */
 int create_listening_socket(int port, int backlog){
     int listen_fd; //socket
@@ -421,25 +380,7 @@ int create_listening_socket(int port, int backlog){
 
     return listen_fd;
 }
-/**
- * @brief Entry point for the server program.
- *
- * This is the main function of the server. It initializes necessary resources,
- * such as mutexes and condition variables, and sets up signal handling. The
- * function then creates a listening socket and initializes the game and player
- * list. It starts a thread to handle incoming client connections, waits for
- * the server shutdown signal (SIGINT), and then shuts down the server, cleaning
- * up resources.
- *
- * @param argc The number of command-line arguments passed to the program.
- * @param argv An array of strings representing the command-line arguments.
- *
- * @return Returns 0 if the server is shut down successfully.
- *
- * @note The server listens for incoming connections, and when SIGINT (CTRL+C)
- *       is received, it shuts down the server, broadcasting a disconnection
- *       message to all clients before freeing all resources.
- */
+
 int main(int argc, char* argv[]) {
     if(argc !=3) {
         fprintf(stderr,"Usage : %s <port> <backlog>\n",argv[0]);
@@ -453,6 +394,7 @@ int main(int argc, char* argv[]) {
     srand(time(NULL)); // Init random seed.
 
     int port = atoi(argv[1]); // Listening port.
+    s_port = port;
     int backlog = atoi(argv[2]); // Max connection on waiting queue.
     int listen_fd = create_listening_socket(port,backlog); // Listening socket to handle connection
 

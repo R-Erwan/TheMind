@@ -2,14 +2,12 @@
 // Created by erwan on 23/11/2024.
 //
 
+#ifndef TEST_STATMANAGERV_H
+#define TEST_STATMANAGERV_H
+
 #include <bits/types/FILE.h>
 
-#ifndef TEST_STATMANAGERV2_H
-#define TEST_STATMANAGERV2_H
-
-#endif //TEST_STATMANAGERV2_H
 #define DATA_DIR "../datas"
-#define SCRIPT_DIR "../scripts"
 
 /**
  * @warning Before use this module ensure that the project have the correct file and directory structure,
@@ -39,3 +37,5 @@ int make_dg(const char* data_fp);
 int make_pdf(const char* data_fp);
 int write_game_rank(GameData* gm, char *p_names[]);
 char **get_top10(int nb_p, int *line_count);
+
+#endif //TEST_STATMANAGERV_H

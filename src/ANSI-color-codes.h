@@ -1,12 +1,8 @@
-//
-// Created by erwan on 10/12/2024.
-//
-
 #ifndef THEMIND_ANSI_COLOR_CODES_H
 #define THEMIND_ANSI_COLOR_CODES_H
 /*
  * This is free and unencumbered software released into the public domain.
- *
+ * fork from : https://gist.github.com/RabaDabaDoba
  * For more information, please refer to <https://unlicense.org>
  */
 
