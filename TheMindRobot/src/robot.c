@@ -10,12 +10,14 @@
 #include "GameState.h"
 
 #define WAIT_DELTA 4
+#define MIN_WAIT 2
 
 bool keepalive = true;
 GameState *gs;
 pthread_mutex_t wait_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t wait_cond = PTHREAD_COND_INITIALIZER;
 int waiting = 0;  // Flag pour vérifier si le thread est en attente
+bool autoplay = false;
 
 
 int create_socket(const char* ip, int port){
@@ -85,7 +87,6 @@ void *handle_reader(void * args) {
                     break;
                 case ROUND_START:
                     gs->round_lvl = serveur_msg.param2;
-                    gs->diff = gs->min_card;
                     break;
                 case CARD:
                     add_card(gs,serveur_msg.param2);
@@ -97,15 +98,21 @@ void *handle_reader(void * args) {
                 case CARD_PLAY:
                     gs->l_card = serveur_msg.param2;
                     gs->diff = gs->min_card - gs->l_card;
-                    if(!isEmpty(gs->cards)){
-                        wake_up_thread();
-                    }
+                    wake_up_thread();
                     break;
                 case LOOSE_ROUND:
                     reset(gs);
+                    if(autoplay){
+                        sleep(2);
+                        send(socket_fd,"start",sizeof("start"),0);
+                    }
                     break;
                 case WIN_ROUND:
                     reset(gs);
+                    if(autoplay){
+                        sleep(2);
+                        send(socket_fd,"start",sizeof("start"),0);
+                    }
                     break;
                 case ENDGAME:
                     keepalive = false;
@@ -134,26 +141,27 @@ void *handle_sender(void * args) {
     char buffer[BUFSIZ];
 
     while(keepalive){
-        if(gs->play == false || isEmpty(gs->cards) == true){
+        while(gs->play == false || isEmpty(gs->cards) == true){
             pthread_mutex_lock(&wait_mutex);
             waiting = 1;
             pthread_cond_wait(&wait_cond,&wait_mutex);
+            waiting = 0;
+            pthread_mutex_unlock(&wait_mutex);
         }
-        waiting = 0;
-        pthread_mutex_unlock(&wait_mutex);
 
         memset(buffer,0,sizeof(buffer));
-
         int diff_p = 99 / (gs->round_lvl * gs->nb_p);
         if(gs->diff < diff_p){
 
-            sleep(WAIT_DELTA);
+            sleep(MIN_WAIT);
             snprintf(buffer,sizeof(buffer),"%d",gs->min_card);
+            if(play_card(gs) == -1){
+                continue;
+            }
             if(send(socket_fd,buffer,strlen(buffer),0) <= 0){
                 perror("ERROR sending message");
                 break;
             }
-            play_card(gs);
 
         } else {
             int wait_time = ( gs->diff / diff_p ) * WAIT_DELTA;
@@ -166,20 +174,22 @@ void *handle_sender(void * args) {
             ts.tv_sec += wait_time;
 
             int ret = pthread_cond_timedwait(&wait_cond,&wait_mutex, &ts);
+
             if(ret == 0) { // Thread réveillé par un autre thread
                 waiting = 0;
                 pthread_mutex_unlock(&wait_mutex);
-
             } else {
                 waiting = 0;
                 pthread_mutex_unlock(&wait_mutex);
 
+                if(gs->play == false || isEmpty(gs->cards) == true) continue;
+
                 snprintf(buffer,sizeof(buffer),"%d",gs->min_card); // Joué la carte
+                play_card(gs);
                 if(send(socket_fd,buffer,strlen(buffer),0) <= 0){
                     perror("ERROR sending message");
                     break;
                 }
-                play_card(gs);
             }
 
         }
@@ -192,13 +202,17 @@ void *handle_sender(void * args) {
 }
 
 int main(int argc, char **argv) {
-    if(argc != 4){
-        fprintf(stderr,"Usage : %s <port> <ipv4> <robotName>\n",argv[0]);
+    if(argc != 5){
+        fprintf(stderr,"Usage : %s <port> <ipv4> <robotName> <autostart 0|1>\n",argv[0]);
         exit(EXIT_FAILURE);
     }
     int port = atoi(argv[1]);
     char *ip = argv[2];
     char *name = argv[3];
+    int start = atoi(argv[4]);
+    if(start == 1){
+        autoplay = true;
+    }
     // Set les variables global.
 
     printf("Tentative de connection avec le serveur %s %d ...\n",ip,port);
@@ -210,8 +224,7 @@ int main(int argc, char **argv) {
     printf("Connection avec le serveur établie !\n");
     gs = create_gameState();
 
-    send(socket_fd,name,5,0);
-
+    send(socket_fd,name,sizeof(name),0);
 
     // Création des threads
     pthread_t pidReader;
@@ -224,6 +237,11 @@ int main(int argc, char **argv) {
     if(pthread_create(&pidWriter,NULL,handle_sender,socket) !=0){
         perror("ERROR : sender thread creation");
         exit(EXIT_FAILURE);
+    }
+
+    if(autoplay){
+        sleep(3);
+        send(socket_fd,"start",sizeof("start"),0);
     }
 
     // Attendre la fin des threads

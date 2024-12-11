@@ -47,7 +47,9 @@ void start_robot(char* robot_name){
         perror("fork");
         exit(EXIT_FAILURE);
     } else if (pid == 0) {
-        execl(ROBOTIA_dir,ROBOTIA_dir,s_port,"127.0.0.1",robot_name,NULL);
+        char port_str[6];
+        snprintf(port_str,sizeof(port_str),"%d",s_port);
+        execl(ROBOTIA_dir,ROBOTIA_dir,port_str,"127.0.0.1",robot_name,"0",NULL);
         perror("execl");
         exit(EXIT_FAILURE);
     }
@@ -60,6 +62,7 @@ void start_robot(char* robot_name){
  * @param p Pointer to the player who send the command.
  */
 void handle_command(const char* cmd, Game *g, Player *p){
+//    printf("%s : %s\n",p->name,cmd);
     switch (hash_cmd(cmd)) {
         case READY :
             if(g->state == LOBBY_STATE || g->state == GAME_STATE) {

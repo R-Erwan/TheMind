@@ -39,7 +39,7 @@ void enqueue(Queue* queue, int value) {
 // Retire un élément de la file
 int dequeue(Queue* queue) {
     if (queue->front == NULL) {
-        fprintf(stderr, "La file est vide\n");
+//        fprintf(stderr, "La file est vide\n");
         return -1; // Erreur
     }
 

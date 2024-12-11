@@ -36,19 +36,23 @@ void add_card(GameState *gs, int card) {
     }
 }
 
-void play_card(GameState *gs) {
-    dequeue(gs->cards);
+int play_card(GameState *gs) {
+    if (dequeue(gs->cards) == -1){
+        return -1;
+    }
+
     if(isEmpty(gs->cards)){
         gs->min_card = 100;
     } else {
         gs->min_card = peek(gs->cards);
     }
+    return 0;
 }
 
 void reset(GameState *gs) {
     reset_queue(gs->cards);
     gs->min_card = 100;
-    gs->diff = -1;
+    gs->diff = 100;
     gs->play = false;
     gs->l_card = 0;
 }

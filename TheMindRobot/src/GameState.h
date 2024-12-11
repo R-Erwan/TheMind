@@ -23,7 +23,7 @@ void free_GameState(GameState *gs);
 
 void add_card(GameState *gs, int card);
 
-void play_card(GameState *gs);
+int play_card(GameState *gs);
 
 void reset(GameState *gs);
 

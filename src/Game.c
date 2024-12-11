@@ -238,10 +238,12 @@ void distribute_card(Game *g){
  * - `0` if the card is played successfully and no round ends.
  */
 int play_card(Game *g, Player *p, int card){
+    pthread_rwlock_wrlock(&g->mutex);
+
     if(p->cards == NULL || card < 0 || card > 99) {
+        pthread_rwlock_unlock(&g->mutex);
         return NO_CARD;
     }
-    pthread_rwlock_wrlock(&g->mutex);
 
     //Check if player have this card
     int have_card = 0;
