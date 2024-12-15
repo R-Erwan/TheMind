@@ -29,7 +29,7 @@ fi
 # Fonction pour extraire une valeur depuis le fichier stats
 get_value() {
     local key="$1"
-    grep -m1 "^$key" "$STATS_FILE" | awk '{print $2}'
+    grep -m1 "^$key" "$STATS_FILE" | awk '{print $2}' # -m1 pour garder que la 1ère occurence commencant par key.
 }
 
 # Fonction pour remplacer une valeur dans le fichier LaTeX
@@ -37,7 +37,7 @@ replace_data() {
     local marker="$1"
     local new_value="$2"
     local file="$3"
-    sed -i "/$marker/{n;s/.*/$new_value/;}" "$file"
+    sed -i "/$marker/{n;s/.*/$new_value/;}" "$file" # recherche la ligne contenanat marker, n passe a la ligne suivante,s/.*/ remplace toute la ligne suivante
 }
 
 # Extraire les valeurs nécessaires

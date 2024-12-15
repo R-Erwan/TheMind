@@ -23,7 +23,7 @@ loosing_file="$output_dir/loosing_cards.dat"
 rounds_file="$output_dir/rounds_levels.dat"
 #donut_file="$output_dir/loosing_cards_donut.dat"
 
-# Extraction des données
+# Extraction des données -f2- garder les collones a partie de la 2ème
 grep "REACTIONPERCARD" "$input_file" | cut -d' ' -f2- | tr ' ' '\n' > "$reaction_file"
 grep "LOOSINGCARD" "$input_file" | cut -d' ' -f2- | tr ' ' '\n' > "$loosing_file"
 grep "ROUNDSLIST" "$input_file" | cut -d' ' -f2- | tr ' ' '\n' > "$rounds_file"
