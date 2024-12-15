@@ -148,7 +148,7 @@ void *handle_client(void *arg) {
     set_player_name(pl,p,name);
 
     broadcast_message(pl,NULL,B_CONSOLE,GRN"\n%s a rejoint !\n\n"CRESET,p->name);
-    print_lobbyState(game);
+    print_lobbyState(game); // Send lobby message broadcast
 
     // Loop on client commands
     char buffer[BUFSIZ];

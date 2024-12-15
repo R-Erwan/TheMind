@@ -311,10 +311,12 @@ int set_ready_player(Game *g, Player *p, int state) {
         return -2;
     }
     int res = update_ready_player(g->playerList,p,state);
-    if(g->state == LOBBY_STATE){
-        print_lobbyState(g);
-    } else if(g->state == GAME_STATE){
-        print_gameState(g);
+    if(res == 0){
+        if(g->state == LOBBY_STATE){
+            print_lobbyState(g);
+        } else if(g->state == GAME_STATE){
+            print_gameState(g);
+        }
     }
     pthread_rwlock_unlock(&g->mutex);
     return res;
@@ -339,7 +341,6 @@ void send_stats(Game*g,Player *p){
     make_dg(g->gameData->data_fp);
     make_pdf(g->gameData->data_fp);
 
-    char msg[256];
     char *filename = strrchr(g->gameData->data_fp,'/');
     if(filename){
         filename++;
