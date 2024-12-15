@@ -6,6 +6,17 @@ ROBOT_BUILD_DIR="build-robot"
 
 echo "Installation de $PROJECT_NAME"
 
+# Vérification que 'dos2unix' est installé
+if ! command -v dos2unix &> /dev/null; then
+  echo "❌ L'outil 'dos2unix' n'est pas installé. Installation..."
+  sudo apt-get update
+  sudo apt-get install -y dos2unix
+fi
+
+# Conversion des fichiers en format Unix
+echo "🔄 Conversion des fichiers en format Unix..."
+find . -type f \( -name "*.sh" -o -name "*.txt" -o -name "*.cmake" -o -name "*.cpp" -o -name "*.h" \) -exec dos2unix {} +
+
 # Dépendances
 echo "📦 Installation des dépendances..."
 sudo apt-get update
