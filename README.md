@@ -9,6 +9,7 @@ Utilisé le script d'installation `install.sh` pour installer les dépendances, 
 ```bash
 ./install.sh 
 ```
+> Si le script ne fonctionne pas, essayer d'utiliser `dos2unix install.sh` pour convertir les saut de ligne windows en unix.
 
 ## Usage
 ### Lancer un serveur
