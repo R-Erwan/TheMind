@@ -11,13 +11,17 @@ Utilisé le script d'installation `install.sh` pour installer les dépendances, 
 ```
 > Si le script ne fonctionne pas, essayer d'utiliser `dos2unix install.sh` pour convertir les saut de ligne windows en unix.
 
+Le script d'installation créer un dossier `TheMind/` avec les 3 éxécutables dans le répertoire `bin/`
+
 ## Usage
 ### Lancer un serveur
-Lancer le serveur avec `.\TheMnind <port> <backlog>` depuis le répertoire _build-server_ en précisant le port principal (pour les connexions clients), et un backlog.
+L'éxécutable se trouve dans : `TheMind/bin/server/`
+
+Lancer le serveur avec `.\TheMindServer <port> <backlog>` depuis le répertoire _build-server_ en précisant le port principal (pour les connexions clients), et un backlog.
 > Le port de requête de téléchargement est définie automatiquement en fonction du port principal
 ```python
 # Lancer le serveur
-./TheMind 4242 10
+./TheMindServer 4242 10
 Server listening on port 4242 # Port d'écoute connection joueur
 Server listening on port 4243 # Port d'écoute requête de téléchargment de fichier
 [DL] Server ready to handle new downloading request
@@ -39,7 +43,7 @@ Nb prêt : [1/1]
 -------------------
 ```
 
-Ou en utilisant le bin client dasn **TheMindClient**.
+Ou en utilisant l'éxécutable client dans `TheMind/bin/client`.
 ```python
 ./TheMindClient 127.0.0.1 4242
 Check installation ...
@@ -61,7 +65,7 @@ A la fin d'une partie le serveur enverra le nom du fichier de statistiques crée
 ```python
 Le fichier de statistiques est disponible.
 Nom du fichier : 2024-12-11-23_30_41.pdf
-Pour le récupérer, utiliser la commande : getfile 2024-12-11-23_30_41.pdf sur le port 4243
+Pour le récupérer, utiliser la commande : getfile 2024-12-11-23_30_41.pdf sur le port du serveur + 1
 
 ----------------------------- Classement -----------------------------
 Rang nbJoueurs MancheMax Joueurs Date
