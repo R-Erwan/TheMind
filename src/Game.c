@@ -472,17 +472,28 @@ void print_classement(Game* g, Player* p){
     int line;
     char **result = get_top10(g->playerList->count,&line);
     broadcast_message(g->playerList,p,0,"----------------------------- Classement -----------------------------\n");
-    broadcast_message(g->playerList,p,0,"Rang " CYN"nbJoueurs "MAG"MancheMax "BLU"Joueurs "YEL"Date \n"CRESET);
+    broadcast_message(g->playerList,p,0,"Rang  " CYN "%-10s " MAG "%-10s " BLU "%-30s " YEL "%-10s\n" CRESET, "nbJoueurs", "MancheMax", "Joueurs", "Date");
+
+    // Largeurs fixes pour chaque colonne
+    int width_nbJoueurs = 10;
+    int width_mancheMax = 10;
+    int width_joueurs = 30;
+    int width_date = 10;
+
     for (int i = 0; i < line; ++i) {
         char *entry = result[i];
-        char *nbJoueurs = strtok(entry,",");
+        char *nbJoueurs = strtok(entry, ",");
         char *mancheMax = strtok(NULL, ",");
         char *joueurs = strtok(NULL, ",");
         char *date = strtok(NULL, ",");
-        broadcast_message(g->playerList,p,0,"%-5d " CYN "%-10s " MAG "%-10s " BLU "%-20s " YEL "%-10s\n" CRESET,
-                          i+1,nbJoueurs,mancheMax,joueurs,date);
+
+        // Utilisation de largeurs fixes avec padding
+        broadcast_message(g->playerList,p,0,"%-5d " CYN "%-*s " MAG "%-*s " BLU "%-*s " YEL "%-*s\n" CRESET,
+                          i+1, width_nbJoueurs, nbJoueurs, width_mancheMax, mancheMax, width_joueurs, joueurs, width_date, date);
         free(result[i]);
     }
+
     free(result);
     broadcast_message(g->playerList,p,0,"---------------------------------------------------------------------\n");
 }
+

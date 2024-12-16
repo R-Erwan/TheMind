@@ -9,11 +9,13 @@ add_executable(TheMindServeur src/main.c
         src/queue.c
         src/utils.c
         src/statsManager.c)
+
 add_executable(TheMindRobot TheMindRobot/src/robot.c
         TheMindRobot/src/GameState.c
         TheMindRobot/src/parser.c
         src/queue.c
 )
+
 add_executable(TheMindClient TheMindClient/src/main.c
         TheMindClient/src/utils.c
 )

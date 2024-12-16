@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include "parser.h"
 #include "GameState.h"
+#include "../../src/queue.h"
 
 #define WAIT_DELTA 4
 #define MIN_WAIT 2

@@ -4,6 +4,7 @@
 
 #include <malloc.h>
 #include "GameState.h"
+#include "../../src/queue.h"
 
 GameState *create_gameState() {
     GameState *gs = malloc(sizeof(GameState));

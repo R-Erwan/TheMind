@@ -5,7 +5,7 @@
 #ifndef THEMINDROBOTIA_GAMESTATE_H
 
 #include <stdbool.h>
-#include "queue.h"
+#include "../../src/queue.h"
 #define THEMINDROBOTIA_GAMESTATE_H
 typedef struct{
     int l_card;
