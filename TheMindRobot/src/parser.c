@@ -4,7 +4,6 @@
 
 #include <string.h>
 #include <malloc.h>
-#include "ANSI-color-codes.h"
 #include "parser.h"
 
 void remove_ansi_codes(char *msg) {

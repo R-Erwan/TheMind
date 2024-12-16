@@ -1,8 +1,7 @@
 #!/bin/bash
 
 PROJECT_NAME="TheMind"
-BUILD_DIR="build-server"
-ROBOT_BUILD_DIR="build-robot"
+BUILD_DIR="TheMind"
 
 echo "Installation de $PROJECT_NAME"
 
@@ -22,13 +21,8 @@ echo "📦 Installation des dépendances..."
 sudo apt-get update
 sudo apt-get install -y cmake gcc gnuplot texlive texlive-latex-extra texlive-lang-french
 
-# Arborescence
-echo "📁 Création de l'arborescence des fichiers..."
-mkdir -p {datas,pdf}
-touch datas/rank.dat
-
 # Droits d'éxécution
-echo "🪪Setup des droits sur les scripts :"
+echo "🪪 Setup des droits sur les scripts :"
 chmod -R 777 *
 
 # Compilation Serveur
@@ -45,27 +39,13 @@ cmake ..
 
 echo "⚙️ Compilation..."
 cmake --build .
-cd ..
 
-# Compilation Robot
-if [ -d  "$ROBOT_BUILD_DIR" ]; then
-  echo "🧹 Nettoyage du répertoire $ROBOT_BUILD_DIR existant..."
-  rm -rf "$ROBOT_BUILD_DIR"
-fi
-echo "📁 Création du répertoire $ROBOT_BUILD_DIR"
-mkdir "$ROBOT_BUILD_DIR"
-cd "$ROBOT_BUILD_DIR"
-
-echo "🔧 Configuration du robot avec CMake..."
-cmake ../TheMindRobot
-echo "⚙️ Compilation du robot..."
-cmake --build .
-
-cd ..
-
-# Verification
+# Arborescence
+echo "📁 Création de l'arborescence des fichiers..."
+mkdir bin/server/datas && echo "Repertoire crée : bin/server/datas"
+mkdir bin/server/pdf && echo "Repertoire crée : bin/server/pdf"
+touch bin/server/datas/rank.dat && echo "Fichier crée : rank.dat"
 
 # Étape 4 : Fin
-echo "✅ Installation terminée. Exécutable disponible dans $BUILD_DIR/$PROJECT_NAME"
-echo "run ./$PROJECT_NAME dans le dossier $BUILD_DIR pour lancer le server."
+echo "✅ Installation terminée. Exécutable disponible dans $BUILD_DIR/$PROJECT_NAME/bin"
 

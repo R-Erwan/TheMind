@@ -15,7 +15,7 @@
 #include "statsManager.h"
 #include "ANSI-color-codes.h"
 
-#define STAT_FILE_DL GRN"\nLe fichier de statistiques est disponible. \nNom du fichier : %s.pdf \nPour le récupérer, utiliser la commande : getfile %s.pdf sur le port 4243\n\n"CRESET
+#define STAT_FILE_DL GRN"\nLe fichier de statistiques est disponible. \nNom du fichier : %s.pdf \nPour le récupérer, utiliser la commande : getfile %s.pdf sur le port du serveur + 1\n\n"CRESET
 #define DEFAULT_ROUND 1
 #define NO_CARD 1
 #define WRONG_CARD 2

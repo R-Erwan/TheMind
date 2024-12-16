@@ -7,7 +7,7 @@
 
 #include <bits/types/FILE.h>
 
-#define DATA_DIR "../datas"
+#define DATA_DIR "./datas"
 
 /**
  * @warning Before use this module ensure that the project have the correct file and directory structure,

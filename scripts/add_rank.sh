@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Nom du fichier de classement
-FICHIER_CLASSEMENT="../datas/rank.dat"
+FICHIER_CLASSEMENT="./datas/rank.dat"
 
 # Vérifier qu'il y a au moins 3 arguments
 if [ "$#" -lt 3 ]; then

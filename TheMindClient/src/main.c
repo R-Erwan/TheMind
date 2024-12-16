@@ -7,8 +7,8 @@
 #include <pthread.h>
 #include <unistd.h>
 #include "utils.h"
-#define RULES_FILE "../ressources/rules.txt"
-#define HELP_FILE "../ressources/help_command.txt"
+#define RULES_FILE "./ressources/rules.txt"
+#define HELP_FILE "./ressources/help_command.txt"
 
 bool keepalive = true;
 char* s_ip;
@@ -59,7 +59,7 @@ void download_pdf(const char* filename,int port,const char* ip){
     char buffer[BUFSIZ];
     ssize_t b_received;
     char out_filename[256];
-    snprintf(out_filename,sizeof(out_filename),"../pdf/%s",filename);
+    snprintf(out_filename,sizeof(out_filename),"./pdf/%s",filename);
 
     FILE* file = fopen(out_filename,"wb");
     if(file == NULL){
@@ -110,8 +110,8 @@ void *handle_reader(void * args) {
         // Si message fichier pdf disponible
         if(parse_stoc(buffer) == PDF_FILE_MESSAGE){
             pdfFile pdfi = parse_pdf(buffer);
-            if(pdfi.port){
-                download_pdf(pdfi.filename,pdfi.port,s_ip);
+            if(pdfi.filename){
+                download_pdf(pdfi.filename,s_port+1,s_ip);
                 free(pdfi.filename); // Libérer la mémoire allouée
             } else {
                 printf("Erreur lors de l'analyse du message PDF\n");

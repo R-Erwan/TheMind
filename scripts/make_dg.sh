@@ -3,7 +3,7 @@
 # Variables
 input_file="$1"
 script_dir=$(dirname "$0")
-data_dir="$(realpath ../datas)"  # Obtenir le chemin absolu
+data_dir="$(realpath ./datas)"  # Obtenir le chemin absolu
 
 
 # Vérification que le fichier d'entrée existe

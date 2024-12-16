@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "utils.h"
-#include "ANSI-color-codes.h"
+#include "../../src/ANSI-color-codes.h"
 
 void print_brain_art() {
     printf("                                                THE MIND CLIENT\n");
@@ -104,8 +104,8 @@ void install(){
     // Vérifie et crée le répertoire pdf
     printf("Check installation ...\n");
     struct stat st;
-    if (stat("../pdf", &st) != 0) { // Si le répertoire n'existe pas
-        if (mkdir("../pdf", 0755) != 0) { // Tente de le créer
+    if (stat("./pdf", &st) != 0) { // Si le répertoire n'existe pas
+        if (mkdir("./pdf", 0755) != 0) { // Tente de le créer
             perror("Erreur lors de la création du répertoire pdf");
             exit(EXIT_FAILURE);
         }
@@ -116,20 +116,20 @@ void install(){
     }
 
     // Vérifie le répertoire ressources
-    if (stat("../ressources", &st) != 0 || !S_ISDIR(st.st_mode)) {
+    if (stat("./ressources", &st) != 0 || !S_ISDIR(st.st_mode)) {
         fprintf(stderr, "Erreur : Le répertoire 'ressources' est introuvable.\n");
         exit(EXIT_FAILURE);
     }
 
     // Vérifie l'existence de rules.txt
-    char rules_path[256] = "../ressources/rules.txt";
+    char rules_path[256] = "./ressources/rules.txt";
     if (access(rules_path, F_OK) != 0) { // Si le fichier n'existe pas
         fprintf(stderr, "Erreur : Le fichier '%s' est introuvable.\n", rules_path);
         exit(EXIT_FAILURE);
     }
 
     // Vérifie l'existence de help_command.txt
-    char help_command_path[256] = "../ressources/help_command.txt";
+    char help_command_path[256] = "./ressources/help_command.txt";
     if (access(help_command_path, F_OK) != 0) { // Si le fichier n'existe pas
         fprintf(stderr, "Erreur : Le fichier '%s' est introuvable.\n", help_command_path);
         exit(EXIT_FAILURE);

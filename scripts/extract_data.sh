@@ -10,7 +10,7 @@ fi
 input_file="$1"
 
 # Dossier de sortie
-output_dir="../datas"
+output_dir="./datas"
 
 # Vérification de l'existence du dossier de sortie
 if [ ! -d "$output_dir" ]; then

@@ -56,10 +56,10 @@ replace_data "%DATA_TIME" "$DATA_TIME" "$TEXFILE"
 
 # Compiler le fichier LaTeX
 pdflatex -jobname="$OUTPUTFILE" "$TEXFILE" > /dev/null 2>&1
-mv "$OUTPUTFILE".pdf ../pdf/"$OUTPUTFILE".pdf
+mv "$OUTPUTFILE".pdf ./pdf/"$OUTPUTFILE".pdf
 rm -f "${OUTPUTFILE}".aux "${OUTPUTFILE}".log
 
 YELLOW='\033[0;33m'
 RESET='\033[0m'
-FULL_PATH=$(realpath "../pdf/$OUTPUTFILE.pdf")
+FULL_PATH=$(realpath "./pdf/$OUTPUTFILE.pdf")
 echo -e "Fichier pdf généré : ${YELLOW} $FULL_PATH ${RESET}"

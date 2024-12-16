@@ -201,7 +201,7 @@ int write_data_to_file(GameData *gm) {
 int make_dg(const char* datas_fp){
     char cmd[512];
     int ret;
-    snprintf(cmd,sizeof(cmd), "../scripts/make_dg.sh %s",datas_fp);
+    snprintf(cmd,sizeof(cmd), "./scripts/make_dg.sh %s",datas_fp);
     ret = system(cmd);
     if (ret == -1) {
         perror("Erreur lors de l'exécution de la commande");
@@ -226,9 +226,9 @@ int make_dg(const char* datas_fp){
  */
 int make_pdf(const char *data_fp) {
     char cmd[512];
-    char latex_f[] = "../ressources/main.tex";
+    char latex_f[] = "./ressources/main.tex";
     int ret;
-    snprintf(cmd,sizeof(cmd),"../scripts/make_pdf.sh %s %s",data_fp,latex_f);
+    snprintf(cmd,sizeof(cmd),"./scripts/make_pdf.sh %s %s",data_fp,latex_f);
     ret = system(cmd);
     if(ret == -1) {
         perror("Erreur lors de l'éxécution de la commande");
@@ -276,7 +276,7 @@ int write_game_rank(GameData* gm, char **p_names){
 
     char cmd[BUFSIZ];
     int ret;
-    snprintf(cmd,sizeof(cmd),"../scripts/add_rank.sh %d %d %s",gm->player_count,gm->max_round_lvl,format_pn);
+    snprintf(cmd,sizeof(cmd),"./scripts/add_rank.sh %d %d %s",gm->player_count,gm->max_round_lvl,format_pn);
     ret = system(cmd);
 
     free(format_pn);
@@ -306,7 +306,7 @@ int write_game_rank(GameData* gm, char **p_names){
 char** get_top10(int nb_p, int *line_count) {
     // Commande à exécuter
     char cmd[256];
-    snprintf(cmd, sizeof(cmd), "../scripts/top10.sh %d", nb_p);
+    snprintf(cmd, sizeof(cmd), "./scripts/top10.sh %d", nb_p);
 
     // Ouvrir le processus pour lire la sortie du script
     FILE *fp = popen(cmd, "r");

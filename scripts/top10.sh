@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Nom du fichier de classement
-FICHIER_CLASSEMENT="../datas/rank.dat"
+FICHIER_CLASSEMENT="./datas/rank.dat"
 
 # Argument : nombre_joueurs
 if [ "$#" -ne 1 ]; then

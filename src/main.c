@@ -15,8 +15,8 @@
 #define MAX_PLAYERS 4
 #define SERVER_FULL_MSG "Le serveur est plein. Veuillez réessayer plus tard.\n"
 #define GAME_STARTED_MSG "Une partie est déja en cours. Veuillez réessayer plus tard.\n"
-#define PDF_DIR "../pdf"
-#define ROBOTIA_dir "../build-robot/TheMindRobotIA"
+#define PDF_DIR "./pdf"
+#define ROBOTIA_dir "../robot/TheMindRobot"
 /**
  * @brief Structure containing arguments for a player management thread.
  */
