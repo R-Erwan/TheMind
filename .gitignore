@@ -1,6 +1,7 @@
 /cmake-build-debug/
 /cmake-build-release-wsl/
 /.idea/icon.svg
+.idea
 /doc/
 /Doxyfile
 /Stats/global_stats
@@ -8,3 +9,4 @@
 /datas/
 /pdf/
 /TheMindRobot/build-robot/
+/TheMind/
