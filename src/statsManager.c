@@ -33,6 +33,7 @@ GameData *create_gm() {
 
     return gm;
 }
+
 /**
  * @brief Frees the memory allocated for a GameData structure.
  *
@@ -44,6 +45,7 @@ void free_gm(GameData *gm) {
         free(gm);
     }
 }
+
 /**
  * @brief Create FILE to store datas.
  * @param gm The Game Data struct associate.
@@ -59,7 +61,7 @@ char *create_uf(GameData *gm) {
 
     FILE *file = fopen(path,"w");
     if (!file) {
-        perror("Erreur lors de la création du fichier");
+        perror("Erreur lors de la création du fichier ");
         return NULL;
     }
     fclose(file);
@@ -72,6 +74,7 @@ char *create_uf(GameData *gm) {
     strncpy(gm->data_fp,path,sizeof(path));
     return gm->data_fp;
 }
+
 /**
  * @brief Adds a card play to the GameData structure and updates the reaction time for the card.
  *
@@ -89,6 +92,7 @@ void add_card(GameData *gm, int card, time_t reaction_time) {
     gm->avg_reaction_time[card] = (nbc - 1) * avgt + (int)reaction_time;
     gm->avg_reaction_time[card] /= nbc;
 }
+
 /**
  * @brief Adds a new round to the GameData structure, updating relevant statistics.
  *
@@ -113,6 +117,7 @@ void add_round(GameData *gm, int round_lvl, int win) {
     }
 
 }
+
 /**
  * @brief Records a losing card and updates its reaction time statistics.
  *
@@ -124,13 +129,7 @@ void add_loosing_card(GameData *gm, int card, time_t reaction_time){
     gm->loosing_cards[card]++;
     add_card(gm,card,reaction_time);
 }
-/**
- * @brief Records a losing card and updates its reaction time statistics.
- *
- * @param gm Pointer to the GameData structure.
- * @param card The ID of the losing card.
- * @param reaction_time The reaction time in milliseconds.
- */
+
 int write_data_to_file(GameData *gm) {
     FILE *file = fopen(gm->data_fp,"w");
 
@@ -192,10 +191,11 @@ int write_data_to_file(GameData *gm) {
     fclose(file);
     return 0;
 }
+
 /**
  * @brief Executes a script to generate a data graph using the provided file path.
  *
- * @param data_fp Path to the data file to be used by the script.
+ * @param datas_fp Path to the data file to be used by the script.
  * @return 0 on success, or -1 if an error occurs.
  */
 int make_dg(const char* datas_fp){
@@ -218,6 +218,7 @@ int make_dg(const char* datas_fp){
     }
 
 }
+
 /**
  * @brief Executes a script to generate a PDF using the provided data file path.
  *
@@ -244,6 +245,7 @@ int make_pdf(const char *data_fp) {
         return -1;  // Erreur
     }
 }
+
 /**
  * @brief add a game in the rank.dat file
  * @param gm The game data
@@ -296,6 +298,7 @@ int write_game_rank(GameData* gm, char **p_names){
     }
 
 }
+
 /**
  * @brief return array with a top10 rank, base on the player count
  * @param nb_p Number of player.
