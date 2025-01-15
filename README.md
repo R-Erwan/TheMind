@@ -6,6 +6,7 @@ Serveur de jeu multijoueur pour jouer a The Mind game.
 
 Utilisé le script d'installation `install.sh` pour installer les dépendances, et les dossiers nécéssaire.
 
+
 ```bash
 ./install.sh 
 ```
@@ -85,3 +86,22 @@ echo "getfile 2024-12-11-23_30_41.pdf" | nc localhost 4243 > stats.pdf
 ```
 ### Depuis l'éxécutable client : 
 Avec le programme client, le fichier est automatiquement télécharger et copier dans un répertoire **pdf** a la racine du dossier du programme.
+
+## Lancer avec Docker :
+Avec le fichier `DockerFile` 
+
+### Build image Docker :
+```bash
+docker build -t themind-server:latest .
+```
+
+### Lancer le conteneur :
+```bash
+docker run -e PORT=<port-principal> -p <port>:<port> -p <port+1>:<port+1> themind-server:latest
+```
+
+### Connexion des clients :
+```bash
+nc <adresse-ip-du-serveur> 4242
+```
+
