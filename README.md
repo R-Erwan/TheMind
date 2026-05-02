@@ -1,107 +1,137 @@
-# The Mind
+# TheMind — Multiplayer Card Game Server
 
-Serveur de jeu multijoueur pour jouer a The Mind game.
+A multithreaded TCP server for the cooperative card game *The Mind*, written in C. Includes a dedicated client, an AI robot player, and automated PDF statistics reports.
 
-## Installation
+## Overview
 
-Utilisé le script d'installation `install.sh` pour installer les dépendances, et les dossiers nécéssaire.
+*The Mind* is a cooperative card game where players must play numbered cards (1–99) in ascending order **without communicating**. This implementation runs as a networked server supporting up to four concurrent players, with lobby management, round progression, and per-game statistics exported as PDF documents.
 
+The project is structured as three independent executables:
+
+| Component | Description |
+|---|---|
+| `TheMindServeur` | Game server — manages lobby, game state, and client connections |
+| `TheMindClient` | Interactive terminal client with a help system and auto-download |
+| `TheMindRobot` | Autonomous AI player, spawned as a separate process |
+
+## Architecture
+
+```
+TheMind-main/
+├── src/                     # Server
+│   ├── main.c               # Entry point, connection & download threads
+│   ├── Game.{h,c}           # Game state machine
+│   ├── playersRessources.{h,c}  # Player list & thread-safe access
+│   ├── queue.{h,c}          # Sorted card queue
+│   ├── statsManager.{h,c}   # Statistics collection & PDF generation
+│   └── utils.{h,c}
+├── TheMindClient/src/        # Client
+├── TheMindRobot/src/         # Robot AI
+├── ressources/main.tex       # LaTeX template for stats PDFs
+├── CMakeLists.txt
+├── Dockerfile
+└── install.sh
+```
+
+**Server design:**
+
+- One thread per connected client, synchronized via `pthread` read-write locks and mutexes
+- A dedicated download thread on `port+1` for file transfers, separated from game traffic
+- Signal handler for graceful shutdown on `SIGINT`
+- Robot players are spawned via `fork()` + `execl()` as independent processes
+
+**Game states:** `LOBBY_STATE` → `GAME_STATE` → `PLAY_STATE` → (stats & rankings)
+
+## Tech Stack
+
+| Concern | Tool |
+|---|---|
+| Language | C (C17) |
+| Build system | CMake ≥ 3.25 |
+| Networking | POSIX TCP sockets |
+| Concurrency | `pthread` (threads, mutexes, rwlocks) |
+| Statistics | LaTeX + gnuplot → PDF |
+| Containerization | Docker (debian:stable-slim) |
+
+## Getting Started
+
+### Prerequisites
+
+Debian/Ubuntu:
+```bash
+sudo apt install gcc cmake gnuplot texlive texlive-latex-extra
+```
+
+### Build & Install
 
 ```bash
-./install.sh 
-```
-> Si le script ne fonctionne pas, essayer d'utiliser `dos2unix install.sh` pour convertir les saut de ligne windows en unix.
-
-Le script d'installation créer un dossier `TheMind/` avec les 3 éxécutables dans le répertoire `bin/`
-
-## Usage
-### Lancer un serveur
-L'éxécutable se trouve dans : `TheMind/bin/server/`
-
-Lancer le serveur avec `.\TheMindServer <port> <backlog>` depuis le répertoire _build-server_ en précisant le port principal (pour les connexions clients), et un backlog.
-> Le port de requête de téléchargement est définie automatiquement en fonction du port principal
-```python
-# Lancer le serveur
-./TheMindServer 4242 10
-Server listening on port 4242 # Port d'écoute connection joueur
-Server listening on port 4243 # Port d'écoute requête de téléchargment de fichier
-[DL] Server ready to handle new downloading request
+./install.sh
 ```
 
-### Connexion client :
-Se connecter au serveur avec une connection **netcat** `nc <ipaddr> <port>` :
-```python nc localhost 4242
-Bienvenue sur TheMind !
-Envoyé votre nom
-Toto
+> On Windows, run `dos2unix install.sh` first if the script fails due to line-ending issues.
 
-Toto a rejoint !
+This compiles all three executables and places them under `TheMind/bin/`.
 
------- LOBBY ------
-Nb Joueurs : 1
-Joueurs : Toto
-Nb prêt : [1/1]
--------------------
+### Run the Server
+
+```bash
+./TheMind/bin/server/TheMindServeur <port> <backlog>
+# Example:
+./TheMind/bin/server/TheMindServeur 4242 10
 ```
 
-Ou en utilisant l'éxécutable client dans `TheMind/bin/client`.
-```python
-./TheMindClient 127.0.0.1 4242
-Check installation ...
-Installation ok
-                                                THE MIND CLIENT
-===============================================================================================================
-...
+The server listens for player connections on `<port>` and for file download requests on `<port+1>`.
+
+### Connect a Client
+
+Using the provided client (recommended):
+```bash
+./TheMind/bin/client/TheMindClient 127.0.0.1 4242
 ```
 
-## Commandes possibles :
-- `ready` et `unready` pour changer son état.
-- `start` Pour lancer la partie ou le round.
-- `stop` Pour mettre fin a une partie.
-- `add robot`Pour ajouter un robot dans la partie.
-- `[1-99]`Pour jouer une carte.  
-
-## Télécharger les statistiques :
-A la fin d'une partie le serveur enverra le nom du fichier de statistiques créer qu'il est possible de télécharger, ainsi que le top10 des parties en fonction du nombre de joueurs.
-```python
-Le fichier de statistiques est disponible.
-Nom du fichier : 2024-12-11-23_30_41.pdf
-Pour le récupérer, utiliser la commande : getfile 2024-12-11-23_30_41.pdf sur le port du serveur + 1
-
------------------------------ Classement -----------------------------
-Rang nbJoueurs MancheMax Joueurs Date
-1     1          2          Toto                 2024-12-10
-2     1          2          Toto                 2024-12-10
-3     1          2          Toto                 2024-12-11
-4     1          1          Toto                 2024-12-10
-5     1          1          Toto                 2024-12-10
-6     1          1          Toto                 2024-12-10
-7     1          1          Toto                 2024-12-10
-8     1          0          Toto                 2024-12-10
----------------------------------------------------------------------
+Or with netcat for quick testing:
+```bash
+nc localhost 4242
 ```
-### Depuis un shell : 
+
+### Run with Docker
+
+```bash
+# Build
+docker build -t themind-server:latest .
+
+# Run (exposes both game and download ports)
+docker run -e PORT=4242 -p 4242:4242 -p 4243:4243 themind-server:latest
+```
+
+## Player Commands
+
+| Command | Alias | Description |
+|---|---|---|
+| `ready` | `r` | Mark yourself ready in the lobby |
+| `unready` | `u` | Cancel ready status |
+| `start` | `sg` | Start the game or the next round |
+| `stop` | — | End the current game |
+| `quit` | — | Disconnect |
+| `add robot` | — | Add an AI player to the lobby |
+| `1`–`99` | — | Play a card |
+
+## Statistics & PDF Reports
+
+At the end of each game the server generates a PDF report (via LaTeX + gnuplot) containing per-round statistics and a global ranking. The filename is broadcast to all players.
+
+**Download via shell:**
 ```bash
 echo "getfile 2024-12-11-23_30_41.pdf" | nc localhost 4243 > stats.pdf
 ```
-### Depuis l'éxécutable client : 
-Avec le programme client, le fichier est automatiquement télécharger et copier dans un répertoire **pdf** a la racine du dossier du programme.
 
-## Lancer avec Docker :
-Avec le fichier `DockerFile` 
+**Download via client:** the PDF is fetched automatically and saved to a local `pdf/` directory.
 
-### Build image Docker :
-```bash
-docker build -t themind-server:latest .
+A leaderboard is also printed in-terminal, ranking all recorded games by player count and maximum round reached:
+
 ```
-
-### Lancer le conteneur :
-```bash
-docker run -e PORT=<port-principal> -p <port>:<port> -p <port+1>:<port+1> themind-server:latest
+Rank  Players  MaxRound  Names   Date
+1     2        8         Alice Bob   2024-12-11
+2     2        6         Alice Bob   2024-12-10
+...
 ```
-
-### Connexion des clients :
-```bash
-nc <adresse-ip-du-serveur> 4242
-```
-
